@@ -10,7 +10,7 @@ keywords = ["minecraft", "minecraft-server", "statik"]
 
 
 [package.metadata]
-msrv = "1.55.0"
+msrv = "1.56.1"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
