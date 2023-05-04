@@ -18,3 +18,8 @@ msrv = "1.56.1"
 opt-level = 3
 
 [dependencies]
+tokio = { version = "1.28.0", features = ["full"] }
+uuid = { version = "1.3.2", features = ["v4", "fast-rng", "serde"] }
+serde = { version = "1.0.160", features = ["derive"] }
+rand = "0.8.5"
+bytes = { version = "1.4.0", features = ["serde"] }
