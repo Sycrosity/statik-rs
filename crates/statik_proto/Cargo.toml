@@ -6,3 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+thiserror = "1.0.40"
+byteorder = "1.4.3"
+
+
+statik_derive = { path = "../statik_derive" }
