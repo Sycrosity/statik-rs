@@ -292,10 +292,25 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
+ "statik_derive",
+ "statik_proto",
  "thiserror",
  "tokio",
  "uuid",
 ]
+
+[[package]]
+name = "statik_derive"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "statik_proto"
+version = "0.1.0"
 
 [[package]]
 name = "syn"
