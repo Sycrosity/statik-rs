@@ -3,3 +3,4 @@ Cargo.lock
 flamegraph*.svg
 .vscode
 .DS_Store
+*.excalidraw
