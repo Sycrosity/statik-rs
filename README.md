@@ -28,7 +28,7 @@ $ cargo run
 (UNIMPLIMENTED FEATURE)
 Or change one of the various settings (also availible through the `statik.toml` file):
 ```bash
-$ cargo run --release -- -p 25566 -m "The server is turning on"
+$ cargo run --release -- -p 25566 -m "The server is turning on: please wait ~30 seconds!"
 ```
 
 -------
@@ -39,6 +39,7 @@ This project takes **heavy** inspiration and couldn't be created without the har
 * [limbo](https://github.com/chrrs/limbo) - the main inspiration for statik, designed for a very similar use case but left undeveloped since May 2022
 * [bamboo](https://gitlab.com/macmv/bamboo) - an attempt at re-writing the minecraft server java code from scratch in rust
 * [feather](https://github.com/feather-rs/feather) - another minecraft server re-write that hasn't had a commit since June 2022
+* tokio's [mini-redis](https://github.com/tokio-rs/mini-redis) tutorial - a well implimented example tokio server that accepts and processes TCP connections, helping me layout and build this server.
 
 -------
 
