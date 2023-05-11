@@ -11,5 +11,7 @@ proc-macro = true
 
 [dependencies]
 quote = "1.0.26"
-syn = { version = "2.0.15", features = ["extra-traits"] }
+syn = { version = "2.0.15", features = ["full"] }
 proc-macro2 = "1.0.56"
+
+statik_common = { path = "../statik_common" }
