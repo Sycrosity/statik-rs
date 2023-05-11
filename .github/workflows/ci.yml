@@ -2,9 +2,9 @@ name: continuous-integration
 
 on:
   pull_request:
-  push: # Run CI on the main branch after every merge. This is important to fill the GitHub Actions cache in a way that pull requests can see it
+  push: # Run CI on the master branch after every merge. This is important to fill the GitHub Actions cache in a way that pull requests can see it
     branches:
-      - main
+      - master
 
 env:
   # When rustup is updated, it tries to replace its binary, which on Windows is somehow locked.
