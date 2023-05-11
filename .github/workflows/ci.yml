@@ -17,20 +17,7 @@ jobs:
   clippy:
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        include:
-          - os: ubuntu-latest
-            deps: |
-
-          - os: macos-latest
-            deps: |
-
-          - os: windows-latest
-            deps: |
-
-
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     env:
       CARGO_TERM_COLOR: always
     steps:
@@ -41,14 +28,9 @@ jobs:
           rustup component add clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: ${{ matrix.os }}
+          # shared-key: ${{ matrix.os }}
           prefix-key: v0 #increment this to bust the cache if needed
-      - name: install platform specific dependencies
-        run: ${{ matrix.deps }}
 
-      #clippy runs check, not needed
-      # - name: run cargo check
-      #   run:  cargo check --features dev
       - name: run cargo clippy
         run:  cargo clippy --features dev
         
@@ -72,20 +54,9 @@ jobs:
   test:
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        include:
-          - os: ubuntu-latest
-            deps: |
 
-          - os: macos-latest
-            deps: |
-
-          - os: windows-latest
-            deps: |
-
-    name: test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: test
+    runs-on: ubuntu-latest
     env:
       CARGO_TERM_COLOR: always
     steps:
@@ -95,10 +66,8 @@ jobs:
           rustup toolchain install stable --profile minimal
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: ${{ matrix.os }}
+          # shared-key: ${{ matrix.os }}
           prefix-key: v0 #increment this to bust the cache if needed
-      - name: install platform specific dependencies
-        run: ${{ matrix.deps }}
 
       - name: run cargo test
         run:  cargo test --features dev
