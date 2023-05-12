@@ -95,6 +95,14 @@ impl Server {
     }
 
     pub async fn run(&mut self) -> anyhow::Result<()> {
+        {
+            let config = self.config.read().await;
+
+            let address = format!("{}:{}", config.host, config.port);
+
+            info!("Statik server is up! Broadcasting on {address}.");
+        }
+
         loop {
             select! {
 
@@ -160,12 +168,15 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
         .init();
+    info!("Statik server is starting.");
 
     let config = ServerConfig {
         host: String::from("127.0.0.1"),
         max_players: 64,
         ..Default::default()
     };
+
+    let address = format!("{}:{}", &config.host, &config.port);
 
     // When the provided `shutdown` future completes, we must send a shutdown
     // message to all active connections. We use a broadcast channel for this
@@ -174,11 +185,6 @@ async fn main() -> anyhow::Result<()> {
     // one.
     let (notify_shutdown, mut _shutdown_rx) = broadcast::channel(1);
     let (shutdown_complete_tx, mut _shutdown_complete_rx) = mpsc::channel(1);
-
-    info!(
-        "Statik server is starting, and will broadcast on {}:{}",
-        &config.host, &config.port
-    );
 
     let mut server = Server::new(config, notify_shutdown, shutdown_complete_tx).await?;
 
