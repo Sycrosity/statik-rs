@@ -4,7 +4,7 @@ use crate::prelude::*;
 
 /// The [`Encode`] + [`Decode`] implementations must read and write a
 /// leading [`VarInt`] packet ID before any other data.
-/// 
+///
 /// a packet must have these fields: \[length, packetId, Data\]
 ///
 /// with the types: \[[VarInt], [VarInt], \[bytes\]\]
