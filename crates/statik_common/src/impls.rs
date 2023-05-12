@@ -1,7 +1,11 @@
-use std::io::{Read, Write};
+use std::{
+    borrow::Cow,
+    io::{Read, Write},
+};
 
 use anyhow::{ensure, Context, Result};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use uuid::Uuid;
 
 use crate::prelude::*;
 
@@ -187,14 +191,35 @@ impl Decode for String {
     }
 }
 
-// impl Encode for String {
-//     fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
-//         self.as_str().encode(buffer)
-//     }
-// }
+// = Cow (copy on write) = \\
 
-// impl Decode for String {
-//     fn decode(buffer: &mut dyn Read) -> Result<Self> {
-//         Ok(<&str>::decode(buffer)?.into())
-//     }
-// }
+impl<'a, B> Encode for Cow<'a, B>
+where
+    B: ToOwned + Encode + ?Sized,
+{
+    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+        self.as_ref().encode(buffer)
+    }
+}
+
+impl<'a, B> Decode for Cow<'a, B>
+where
+    B: ToOwned + ?Sized,
+    B::Owned: Decode,
+{
+    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+        B::Owned::decode(buffer).map(Cow::Owned)
+    }
+}
+
+impl Encode for Uuid {
+    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+        self.as_u128().encode(buffer)
+    }
+}
+
+impl Decode for Uuid {
+    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+        u128::decode(buffer).map(Uuid::from_u128)
+    }
+}

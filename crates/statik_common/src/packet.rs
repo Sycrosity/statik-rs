@@ -2,9 +2,12 @@ use std::io::{Read, Write};
 
 use crate::prelude::*;
 
-/// field types: \[[VarInt], [VarInt], \[bytes\]\]
+/// The [`Encode`] + [`Decode`] implementations must read and write a
+/// leading [`VarInt`] packet ID before any other data.
+/// 
+/// a packet must have these fields: \[length, packetId, Data\]
 ///
-/// field names: \[length, packetId, Data\]
+/// with the types: \[[VarInt], [VarInt], \[bytes\]\]
 pub trait Packet: Decode + Encode {
     /// the VarInt ID of a specified packet (needed to send
     /// any type of any packet)
