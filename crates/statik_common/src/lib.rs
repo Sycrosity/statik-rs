@@ -14,6 +14,8 @@ pub mod prelude {
 
     pub use crate::MINECRAFT_VERSION;
     pub use crate::PROTOCOL_VERSION;
+
+    pub use log::{debug, error, info, log, trace, warn};
 }
 
 pub const MINECRAFT_VERSION: &str = "1.19.4";

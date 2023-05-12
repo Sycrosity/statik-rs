@@ -8,14 +8,14 @@ use crate::prelude::*;
 /// a packet must have these fields: \[length, packetId, Data\]
 ///
 /// with the types: \[[VarInt], [VarInt], \[bytes\]\]
-pub trait Packet: Decode + Encode {
+pub trait Packet: Decode + Encode + Sized + std::fmt::Debug {
     /// the VarInt ID of a specified packet (needed to send
     /// any type of any packet)
     fn id(&self) -> VarInt;
-    /// How long this packet is in bytes (needed to send
-    /// any type of any packet) - should be derived from
-    /// the length of the Packet ID + Data length.
-    fn length(&self) -> VarInt;
+    // /// How long this packet is in bytes (needed to send
+    // /// any type of any packet) - should be derived from
+    // /// the length of the Packet ID + Data length.
+    // fn length(&self) -> VarInt;
 }
 
 pub trait Decode: Sized {

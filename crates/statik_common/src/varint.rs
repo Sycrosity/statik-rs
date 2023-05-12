@@ -23,6 +23,7 @@ impl Decode for VarInt {
 
         loop {
             let byte = buffer.read_u8()?;
+
             value |= ((byte & SEGMENT_BITS) as i32) << pos;
 
             if (byte & CONTINUE_BIT) == 0 {
