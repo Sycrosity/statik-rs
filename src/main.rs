@@ -168,6 +168,7 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
         .init();
+    
     info!("Statik server is starting.");
 
     let config = ServerConfig {
@@ -175,8 +176,6 @@ async fn main() -> anyhow::Result<()> {
         max_players: 64,
         ..Default::default()
     };
-
-    let address = format!("{}:{}", &config.host, &config.port);
 
     // When the provided `shutdown` future completes, we must send a shutdown
     // message to all active connections. We use a broadcast channel for this
@@ -210,7 +209,7 @@ async fn main() -> anyhow::Result<()> {
                 server.shutdown().await?;
                 break;
 
-            }
+            },
             _ = shutdown::sigquit() => {
 
                 debug!("SIGQUIT (quit) OS signal recieved.");

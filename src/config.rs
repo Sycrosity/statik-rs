@@ -17,7 +17,7 @@ pub struct ServerConfig {
     /// Hides the player count to a querying client. Defaults to false.
     ///
     /// Note: for continuity, this should probably match the setting of
-    /// your actual server.
+    /// your actual minecraft server.
     pub hide_player_count: bool,
 
     /// The "Message of the Day" (text displayed when a client checks
@@ -27,7 +27,7 @@ pub struct ServerConfig {
     /// Defaults to "A Statik server!"
     ///
     /// Note: for continuity, this should probably match the MOTD of
-    /// your actual server.
+    /// your actual minecraft server.
     pub motd: String,
 
     /// The maximum size (in bytes) that a packet can be.
