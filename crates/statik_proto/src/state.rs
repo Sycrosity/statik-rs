@@ -6,11 +6,32 @@
 //     Play = VarInt(3),
 // }
 
+use statik_common::prelude::*;
+
 #[derive(Debug, Clone, Copy)]
-#[repr(i32)]
 pub enum State {
-    Handshake = 0x00,
-    Status = 0x01,
-    Login = 0x02,
-    Play = 0x03,
+    Handshake = 0,
+    Status = 1,
+    Login = 2,
+    Play = 3,
+}
+
+impl Encode for State {
+    fn encode(&self, buffer: &mut dyn std::io::Write) -> anyhow::Result<()> {
+        VarInt(*self as i32).encode(buffer)
+    }
+}
+
+impl Decode for State {
+    fn decode(buffer: &mut dyn std::io::Read) -> anyhow::Result<Self> {
+        Ok(match VarInt::decode(buffer)?.0 {
+            0 => Self::Handshake,
+            1 => Self::Status,
+            2 => Self::Login,
+            3 => Self::Play,
+            n => anyhow::bail!(
+                "parsed VarInt returned an invalid State: {n}. Only values 0,1,2 and 3 are valid."
+            ),
+        })
+    }
 }
