@@ -3,7 +3,10 @@ use std::{io::Cursor, sync::Arc};
 use bytes::BytesMut;
 use statik_common::prelude::*;
 
-use statik_proto::state::State;
+use statik_proto::{
+    c2s::handshaking::{handshake::C2SHandshake, legacy_ping::C2SLegacyPing},
+    state::State,
+};
 use tokio::{
     io::{AsyncReadExt, BufWriter},
     net::TcpStream,
@@ -104,22 +107,24 @@ impl Handler {
         while !self.shutdown.is_shutdown() {
             // While reading a request frame, also listen for the shutdown
             // signal - otherwise on a long job this could hang!
-            let maybe_packet = tokio::select! {
-                res = self.connection.read_packet() => res?,
-                _ = self.shutdown.recv() => {
-                    // If a shutdown signal is received, return from `run`.
-                    // This will result in the task terminating.
-                    return Ok(());
-                }
-            };
+            // let maybe_packet = tokio::select! {
+            //     res = self.connection.read_packet::<C2SLegacyPing>() => res?,
+            //     _ = self.shutdown.recv() => {
+            //         // If a shutdown signal is received, return from `run`.
+            //         // This will result in the task terminating.
+            //         return Ok(());
+            //     }
+            // };
 
             //If `None` is returned from `read_frame()` then the peer closed
             //the socket. There is no further work to do and the task can be
             //terminated.
-            let packet = match maybe_packet {
-                Some(packet) => packet,
-                None => return Ok(()),
-            };
+            // let packet = match maybe_packet {
+            //     Some(packet) => packet,
+            //     None => return Ok(()),
+            // };
+
+            let packet = self.connection.read_packet().await?;
 
             todo!()
         }
@@ -178,12 +183,11 @@ impl Connection {
     /// On success, the received packet is returned. If the `TcpStream`
     /// is closed in a way that doesn't break a packet in half, it returns
     /// `None`. Otherwise, an error is returned.
-    pub async fn read_packet(
-        &mut self,
-    ) -> anyhow::Result<statik_proto::c2s::handshaking::C2SHandshakingPacket> {
+    pub async fn read_packet(&mut self) -> anyhow::Result<Option<impl Packet>> {
         tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
-        todo!();
+        self.parse_packet()
+
         // loop {
         //     // Attempt to parse a frame from the buffered data. If enough data
         //     // has been buffered, the frame is returned.
@@ -214,14 +218,16 @@ impl Connection {
     /// data, the frame is returned and the data removed from the buffer. If not
     /// enough data has been buffered yet, `Ok(None)` is returned. If the
     /// buffered data does not represent a valid frame, `Err` is returned.
-    fn parse_packet<P: Packet>(&mut self) -> anyhow::Result<Option<P>> {
-        todo!();
+    pub fn parse_packet(&mut self) -> anyhow::Result<Option<impl Packet>> {
+        // Cursor is used to track the "current" location in the
+        // buffer. Cursor also implements `Buf` from the `bytes` crate
+        // which provides a number of helpful utilities for working
+        // with bytes.
 
-        //     // Cursor is used to track the "current" location in the
-        //     // buffer. Cursor also implements `Buf` from the `bytes` crate
-        //     // which provides a number of helpful utilities for working
-        //     // with bytes.
-        //     let mut buf = Cursor::new(&self.buffer[..]);
+        Ok(Some(C2SLegacyPing { payload: 0x01 }))
+        // todo!()
+        // let mut buf = Cursor::new(&self.buffer[..]);
+        // Ok(Some(C2SLegacyPing::decode(&mut buf)?))
 
         //     // The first step is to check if enough data has been buffered to parse
         //     // a single frame. This step is usually much faster than doing a full
