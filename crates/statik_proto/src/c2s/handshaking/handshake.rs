@@ -4,7 +4,9 @@ use crate::state::State;
 
 use statik_common::prelude::*;
 
-#[derive(Debug)]
+use statik_derive::{Decode, Encode};
+
+#[derive(Debug, Encode, Decode)]
 pub struct C2SHandshake {
     ///See [protocol version numbers](https://wiki.vg/Protocol_version_numbers) (currently 762 in Minecraft 1.19.4).
     pub protocol_version: VarInt,
