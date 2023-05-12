@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use anyhow::{ensure, Result};
+use anyhow::{ensure, Context, Result};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::prelude::*;
@@ -175,9 +175,13 @@ impl Decode for String {
         ensure!(len >= 0, "attempt to decode struct with negative length");
         let len = len as usize;
 
-        let mut buf = vec![];
+        let mut buf: Vec<u8> = Vec::new();
+
+        for _ in 0..len {
+            buf.push(buffer.read_u8().context("not enough data remaining to decode string: buffer length must be {len}, accordign to the starting VarInt.")?);
+        }
         // ensure!(buffer.count(); >= len, "not enough data remaining to decode string");
-        buffer.read(&mut buf)?;
+        // buffer.read(&mut buf)?;
 
         Ok(std::string::String::from_utf8(buf)?)
     }
