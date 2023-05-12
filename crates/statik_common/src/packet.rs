@@ -8,7 +8,7 @@ use crate::prelude::*;
 /// a packet must have these fields: \[length, packetId, Data\]
 ///
 /// with the types: \[[VarInt], [VarInt], \[bytes\]\]
-pub trait Packet: Decode + Encode {
+pub trait Packet: Decode + Encode + Sized {
     /// the VarInt ID of a specified packet (needed to send
     /// any type of any packet)
     fn id(&self) -> VarInt;
