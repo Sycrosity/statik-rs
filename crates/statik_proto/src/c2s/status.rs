@@ -7,6 +7,8 @@ use request::*;
 #[derive(Debug)]
 #[repr(i32)]
 pub enum C2SStatusPacket {
-    StatusRequest(C2SStatusRequest) = 0x00,
-    Ping(C2SPing) = 0x01,
+    // #[id = 0x00]
+    StatusRequest(C2SStatusRequest),
+    // #[id = 0x01]
+    Ping(C2SPing),
 }
