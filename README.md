@@ -3,7 +3,7 @@
 
 statik ~~is~~ (hopefully will become) a lightweight, containerisable minecraft server with the sole purpose of making a server appear online while it is not, sending a signal to start the actual server. This allows the typically high mem and cpu intensive java minecraft server be closed when no-one is playing, yet still have clients see the server as being online.
 
-Statik has a MSRV (Minimum Supported Rust Version) of `1.56.1`.
+Statik's MSRV (Minimum Supported Rust Version) is whatever the most recent version of Rust is, as this project may contain recent rust features that don't exist in previous versions.
 
 -------
 
