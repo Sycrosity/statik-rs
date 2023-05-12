@@ -1,10 +1,11 @@
 use std::{io::Cursor, sync::Arc};
 
+use anyhow::{anyhow, bail};
 use bytes::BytesMut;
 use statik_common::prelude::*;
 
 use statik_proto::{
-    c2s::handshaking::{handshake::C2SHandshake, legacy_ping::C2SLegacyPing},
+    c2s::handshaking::{handshake::C2SHandshake, legacy_ping::C2SLegacyPing, C2SHandshakingPacket},
     state::State,
 };
 use tokio::{
@@ -51,10 +52,6 @@ pub(crate) struct Handler {
     /// to None, until (or if) login sequence starts.
     username: Option<String>,
 
-    /// Current state of the handler: should go from 0 (Handshake) to 1 (status)
-    /// or to 2 (login, which then goes to 3 (play))
-    state: State,
-
     /// The TCP connection implemented using a buffered `TcpStream` for parsing
     /// minecraft packets.
     ///
@@ -93,7 +90,6 @@ impl Handler {
             config,
             uuid: None,
             username: None,
-            state: State::Handshake,
             connection: Connection::new(config_clone, stream).await,
             shutdown,
             _shutdown_complete,
@@ -107,14 +103,14 @@ impl Handler {
         while !self.shutdown.is_shutdown() {
             // While reading a request frame, also listen for the shutdown
             // signal - otherwise on a long job this could hang!
-            // let maybe_packet = tokio::select! {
-            //     res = self.connection.read_packet::<C2SLegacyPing>() => res?,
-            //     _ = self.shutdown.recv() => {
-            //         // If a shutdown signal is received, return from `run`.
-            //         // This will result in the task terminating.
-            //         return Ok(());
-            //     }
-            // };
+            let maybe_packet = tokio::select! {
+                res = self.connection.read_packet() => res?,
+                _ = self.shutdown.recv() => {
+                    // If a shutdown signal is received, return from `run`.
+                    // This will result in the task terminating.
+                    return Ok(());
+                }
+            };
 
             //If `None` is returned from `read_frame()` then the peer closed
             //the socket. There is no further work to do and the task can be
@@ -124,16 +120,19 @@ impl Handler {
             //     None => return Ok(()),
             // };
 
-            let packet = self.connection.read_packet().await?;
+            // let packet = self.connection.read_packet().await?;
+
+            let packet = maybe_packet.unwrap();
+
+            info!("Packet recieved: {packet:#?}");
 
             todo!()
         }
 
-        println!("hi");
-
         Ok(())
     }
 }
+
 /// Send and receive `Frame` values from a minecraft client.
 ///
 /// When implementing networking protocols, a message on that protocol is
@@ -157,6 +156,10 @@ pub struct Connection {
 
     // The buffer for reading frames.
     buffer: BytesMut,
+
+    /// Current state of the handler: should go from 0 (Handshake) to 1 (status)
+    /// or to 2 (login, which then goes to 3 (play))
+    state: State,
 }
 
 impl Connection {
@@ -169,6 +172,7 @@ impl Connection {
             config,
             stream: BufWriter::new(socket),
             buffer: BytesMut::with_capacity(max_packet_size),
+            state: State::Handshake,
         }
     }
 
@@ -184,34 +188,32 @@ impl Connection {
     /// is closed in a way that doesn't break a packet in half, it returns
     /// `None`. Otherwise, an error is returned.
     pub async fn read_packet(&mut self) -> anyhow::Result<Option<impl Packet>> {
-        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+        let bytes_read = self.stream.read_buf(&mut self.buffer).await?;
 
-        self.parse_packet()
+        info!("Read {bytes_read} bytes ");
 
-        // loop {
-        //     // Attempt to parse a frame from the buffered data. If enough data
-        //     // has been buffered, the frame is returned.
-        //     if let Some(frame) = self.parse_frame()? {
-        //         return Ok(Some(frame));
-        //     }
+        loop {
+            if let Some(packet) = self.parse_packet()? {
+                return Ok(Some(packet));
+            }
 
-        //     // There is not enough buffered data to read a frame. Attempt to
-        //     // read more data from the socket.
-        //     //
-        //     // On success, the number of bytes is returned. `0` indicates "end
-        //     // of stream".
-        //     if 0 == self.stream.read_buf(&mut self.buffer).await? {
-        //         // The remote closed the connection. For this to be a clean
-        //         // shutdown, there should be no data in the read buffer. If
-        //         // there is, this means that the peer closed the socket while
-        //         // sending a frame.
-        //         if self.buffer.is_empty() {
-        //             return Ok(None);
-        //         } else {
-        //             return Err("connection reset by peer".into());
-        //         }
-        //     }
-        // }
+            // There is not enough buffered data to read a frame. Attempt to
+            // read more data from the socket.
+            //
+            // On success, the number of bytes is returned. `0` indicates "end
+            // of stream".
+            if 0 == self.stream.read_buf(&mut self.buffer).await? {
+                // The remote closed the connection. For this to be a clean
+                // shutdown, there should be no data in the read buffer. If
+                // there is, this means that the peer closed the socket while
+                // sending a frame.
+                if self.buffer.is_empty() {
+                    return Ok(None);
+                } else {
+                    bail!("connection reset by peer");
+                }
+            }
+        }
     }
 
     /// Tries to parse a frame from the buffer. If the buffer contains enough
@@ -224,10 +226,36 @@ impl Connection {
         // which provides a number of helpful utilities for working
         // with bytes.
 
-        Ok(Some(C2SLegacyPing { payload: 0x01 }))
+        // Ok(Some(C2SLegacyPing { payload: 0x01 }))
         // todo!()
-        // let mut buf = Cursor::new(&self.buffer[..]);
-        // Ok(Some(C2SLegacyPing::decode(&mut buf)?))
+        let mut buf = Cursor::new(&self.buffer[..]);
+
+        let packet_len = VarInt::decode(&mut buf)?.0 as usize;
+
+        if self.buffer.len() < packet_len {
+            bail!(
+                "Packet wasn't long enough!
+            Packet was {} bytes long when the prefixed VarInt said it should be {} bytes long.",
+                self.buffer.len(),
+                packet_len + 1
+            );
+        }
+
+        // self.buffer.reserve(packet_len);
+
+        match self.state {
+            State::Handshake => {
+                // let handshake = C2SHandshakingPacket::decode(&mut buf)?;
+                // handshake
+
+                Ok(Some(C2SHandshakingPacket::decode(&mut buf)?))
+            }
+            State::Status => {
+                unimplemented!()
+            }
+            State::Login => unimplemented!(),
+            State::Play => unimplemented!(),
+        }
 
         //     // The first step is to check if enough data has been buffered to parse
         //     // a single frame. This step is usually much faster than doing a full
