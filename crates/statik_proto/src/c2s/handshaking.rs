@@ -3,10 +3,39 @@ pub mod legacy_ping;
 
 use handshake::*;
 use legacy_ping::*;
+use statik_common::prelude::*;
 
 #[derive(Debug)]
-#[repr(i32)]
 pub enum C2SHandshakingPacket {
-    Handshake(C2SHandshake) = 0x00,
-    LegacyPing(C2SLegacyPing) = 0xFE,
+    // #[id = 0x00]
+    Handshake(C2SHandshake),
+    // #[id = 0xFE]
+    // LegacyPing(C2SLegacyPing),
+}
+
+impl Packet for C2SHandshakingPacket {
+    fn id(&self) -> VarInt {
+        match self {
+            C2SHandshakingPacket::Handshake(_) => VarInt(0),
+        }
+    }
+}
+
+impl Encode for C2SHandshakingPacket {
+    fn encode(&self, buffer: &mut dyn std::io::Write) -> anyhow::Result<()> {
+        todo!()
+    }
+}
+
+impl Decode for C2SHandshakingPacket {
+    fn decode(buffer: &mut dyn std::io::Read) -> anyhow::Result<Self> {
+        let id = VarInt::decode(buffer)?;
+
+        debug!("{id}");
+
+        Ok(match id.0 {
+            0 => Self::Handshake(C2SHandshake::decode(buffer)?),
+            _ => unimplemented!(),
+        })
+    }
 }
