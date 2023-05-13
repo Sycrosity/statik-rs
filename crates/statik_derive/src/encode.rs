@@ -55,7 +55,7 @@ pub fn expand_derive_encode(input: &mut DeriveInput) -> Result<TokenStream> {
         }
         Data::Enum(e) => Err(Error::new(
             e.enum_token.span,
-            "cannot derive `Encode` on unions",
+            "cannot derive `Encode` on enums",
         )),
         Data::Union(u) => Err(Error::new(
             u.union_token.span,
