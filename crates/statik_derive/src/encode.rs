@@ -3,10 +3,10 @@ use syn::{Data, DeriveInput, Error, Fields, LitInt, Result};
 
 pub fn expand_derive_encode(input: &mut DeriveInput) -> Result<TokenStream> {
     let DeriveInput {
-        // attrs: _attrs,
-        // vis: _vis,
+        // attrs,
+        // vis,
         ident,
-        // generics: _generics,
+        // generics,
         data,
         ..
     } = input;
@@ -41,7 +41,7 @@ pub fn expand_derive_encode(input: &mut DeriveInput) -> Result<TokenStream> {
                 #[allow(unused_imports)]
                 impl ::statik_common::packet::Encode for #ident
                 {
-                    fn encode(&self, _buffer: &mut dyn ::std::io::Write) -> ::anyhow::Result<()> {
+                    fn encode(&self, _buffer: impl ::std::io::Write) -> ::anyhow::Result<()> {
 
                         use ::statik_common::packet::Encode;
                         use ::anyhow::{Context, ensure};
