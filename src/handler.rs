@@ -81,7 +81,7 @@ impl Handler {
 
                     let template = reason?;
 
-                    let context = Context::from_serialize(&self.player.clone().unwrap_or_default())?;
+                    let context = Context::from_serialize(self.player.clone().unwrap_or_default())?;
 
                     let disconnect_msg = match Tera::one_off(&template, &context, false) {
                         Ok(s) => s,

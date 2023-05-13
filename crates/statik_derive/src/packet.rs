@@ -11,7 +11,7 @@ pub fn expand_derive_packet(input: &mut DeriveInput) -> Result<TokenStream> {
         ..
     } = input;
 
-    let Some(packet_id) = extract_packet_id_attr(&attrs)? else {
+    let Some(packet_id) = extract_packet_id_attr(attrs)? else {
         return Err(Error::new(
             input.ident.span(),
             "cannot derive `Packet` without `#[packet_id = ...]` helper attribute",
@@ -140,9 +140,8 @@ fn extract_packet_id_attr(attrs: &[Attribute]) -> Result<Option<LitInt>> {
                 let span = n.path.segments.first().unwrap().ident.span();
 
                 if let Expr::Lit(l) = &n.value {
-                    match &l.lit {
-                        Lit::Int(i) => return Ok(Some(i.clone())),
-                        _ => (),
+                    if let Lit::Int(i) = &l.lit {
+                        return Ok(Some(i.clone()))
                     }
                 }
 
