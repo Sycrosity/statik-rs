@@ -1,4 +1,4 @@
-use std::{io::Cursor, sync::Arc};
+use std::{io::Cursor, net::SocketAddr, sync::Arc};
 
 use anyhow::{anyhow, bail};
 use bytes::BytesMut;
@@ -36,103 +36,6 @@ fn is_valid_username(username: &str) -> bool {
             .all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
-/// Per-connection handler. Reads packets sent from `connection` (a tcp stream from a
-/// minecraft client) and sends responses accordingly.
-#[derive(Debug)]
-pub(crate) struct Handler {
-    config: Arc<RwLock<ServerConfig>>,
-
-    /// A uniquely identifying UUID corresponding to the users minecraft account,
-    /// which can be used to check against a whitelist/blacklist/banlist, find
-    /// their username, download their currently active skin and more. Defaults
-    /// to None, until (or if) login sequence starts.
-    uuid: Option<Uuid>,
-
-    /// The username of an account as sent in the initial login packet. Defaults
-    /// to None, until (or if) login sequence starts.
-    username: Option<String>,
-
-    /// The TCP connection implemented using a buffered `TcpStream` for parsing
-    /// minecraft packets.
-    ///
-    /// When the [`Server`] receives an inbound connection, the `TcpStream` is
-    /// passed to `Connection::new`, which initializes the associated buffers.
-    /// `Connection` allows the handler to operate at the "frame" level and keep
-    /// the byte level protocol parsing details encapsulated in `Connection`.
-    connection: Connection,
-
-    /// Listen for shutdown notifications.
-    ///
-    /// A wrapper around the `broadcast::Receiver` paired with the sender in
-    /// [`Server`]. The connection handler processes requests from the
-    /// connection until the peer disconnects **or** a shutdown notification is
-    /// received from `shutdown`. In the latter case, any in-flight work being
-    /// processed for the peer is continued until it reaches a safe state, at
-    /// which point the connection is terminated.
-    shutdown: Shutdown,
-
-    /// Not used directly. Instead, when `Handler` is dropped, this cloned
-    /// to the shutdown channel is also dropped - all clones must be dropped
-    /// for the server to shutdown, and thus this is a good way of checking
-    /// when all connections have finished/been terminated.
-    _shutdown_complete: mpsc::Sender<()>,
-}
-
-impl Handler {
-    pub async fn new(
-        config: Arc<RwLock<ServerConfig>>,
-        stream: TcpStream,
-        shutdown: Shutdown,
-        _shutdown_complete: mpsc::Sender<()>,
-    ) -> Self {
-        let config_clone = config.clone();
-        Self {
-            config,
-            uuid: None,
-            username: None,
-            connection: Connection::new(config_clone, stream).await,
-            shutdown,
-            _shutdown_complete,
-        }
-    }
-
-    pub async fn run(&mut self) -> anyhow::Result<()> {
-        // As long as the shutdown signal has not been received, try to read a
-        // new request frame.
-
-        while !self.shutdown.is_shutdown() {
-            // While reading a request frame, also listen for the shutdown
-            // signal - otherwise on a long job this could hang!
-            let maybe_packet = tokio::select! {
-                res = self.connection.read_packet() => res?,
-                _ = self.shutdown.recv() => {
-                    // If a shutdown signal is received, return from `run`.
-                    // This will result in the task terminating.
-                    return Ok(());
-                }
-            };
-
-            //If `None` is returned from `read_frame()` then the peer closed
-            //the socket. There is no further work to do and the task can be
-            //terminated.
-            // let packet = match maybe_packet {
-            //     Some(packet) => packet,
-            //     None => return Ok(()),
-            // };
-
-            // let packet = self.connection.read_packet().await?;
-
-            let packet = maybe_packet.unwrap();
-
-            info!("Packet recieved: {packet:#?}");
-
-            todo!()
-        }
-
-        Ok(())
-    }
-}
-
 /// Send and receive `Frame` values from a minecraft client.
 ///
 /// When implementing networking protocols, a message on that protocol is
@@ -154,23 +57,31 @@ pub struct Connection {
     // sufficient for our needs.
     stream: BufWriter<TcpStream>,
 
+    /// The address that the connection comes from.
+    pub address: SocketAddr,
+
     // The buffer for reading frames.
     buffer: BytesMut,
 
     /// Current state of the handler: should go from 0 (Handshake) to 1 (status)
     /// or to 2 (login, which then goes to 3 (play))
-    state: State,
+    pub state: State,
 }
 
 impl Connection {
     /// Create a new `Connection`, backed by `socket`. Read and write buffers
     /// are initialized.
-    pub async fn new(config: Arc<RwLock<ServerConfig>>, socket: TcpStream) -> Self {
+    pub async fn new(
+        config: Arc<RwLock<ServerConfig>>,
+        socket: TcpStream,
+        address: SocketAddr,
+    ) -> Self {
         let max_packet_size = config.read().await.max_packet_size;
 
         Self {
             config,
             stream: BufWriter::new(socket),
+            address,
             buffer: BytesMut::with_capacity(max_packet_size),
             state: State::Handshake,
         }
@@ -190,7 +101,7 @@ impl Connection {
     pub async fn read_packet(&mut self) -> anyhow::Result<Option<impl Packet>> {
         let bytes_read = self.stream.read_buf(&mut self.buffer).await?;
 
-        info!("Read {bytes_read} bytes ");
+        trace!("Read {bytes_read} bytes from {}.", self.address);
 
         loop {
             if let Some(packet) = self.parse_packet()? {
@@ -256,74 +167,11 @@ impl Connection {
             State::Login => unimplemented!(),
             State::Play => unimplemented!(),
         }
+    }
 
-        //     // The first step is to check if enough data has been buffered to parse
-        //     // a single frame. This step is usually much faster than doing a full
-        //     // parse of the frame, and allows us to skip allocating data structures
-        //     // to hold the frame data unless we know the full frame has been
-        //     // received.
-        //     match Frame::check(&mut buf) {
-        //         Ok(_) => {
-        //             // The `check` function will have advanced the cursor until the
-        //             // end of the frame. Since the cursor had position set to zero
-        //             // before `Frame::check` was called, we obtain the length of the
-        //             // frame by checking the cursor position.
-        //             let len = buf.position() as usize;
+    pub async fn write_packet(&mut self, packet: impl Packet) -> anyhow::Result<()> {
+        trace!("(↑) Packet sent: {packet:?}");
 
-        //             // Reset the position to zero before passing the cursor to
-        //             // `Frame::parse`.
-        //             buf.set_position(0);
-
-        //             // Parse the frame from the buffer. This allocates the necessary
-        //             // structures to represent the frame and returns the frame
-        //             // value.
-        //             //
-        //             // If the encoded frame representation is invalid, an error is
-        //             // returned. This should terminate the **current** connection
-        //             // but should not impact any other connected client.
-        //             let frame = Frame::parse(&mut buf)?;
-
-        //             // Discard the parsed data from the read buffer.
-        //             //
-        //             // When `advance` is called on the read buffer, all of the data
-        //             // up to `len` is discarded. The details of how this works is
-        //             // left to `BytesMut`. This is often done by moving an internal
-        //             // cursor, but it may be done by reallocating and copying data.
-        //             self.buffer.advance(len);
-
-        //             // Return the parsed frame to the caller.
-        //             Ok(Some(frame))
-        //         }
-        //         // There is not enough data present in the read buffer to parse a
-        //         // single frame. We must wait for more data to be received from the
-        //         // socket. Reading from the socket will be done in the statement
-        //         // after this `match`.
-        //         //
-        //         // We do not want to return `Err` from here as this "error" is an
-        //         // expected runtime condition.
-        //         Err(Incomplete) => Ok(None),
-        //         // An error was encountered while parsing the frame. The connection
-        //         // is now in an invalid state. Returning `Err` from here will result
-        //         // in the connection being closed.
-        //         Err(e) => Err(e.into()),
-        //     }
+        todo!()
     }
 }
-
-// pub async fn process_connection(
-//     stream: TcpStream,
-//     _shutdown: UnboundedSender<()>,
-//     _done: Sender<()>,
-// ) {
-//     let writer = BufWriter::new(stream);
-
-//     let buffer = BytesMut::new();
-
-//     // loop {
-//     //     select! {}
-//     // }
-// }
-
-// async fn read_packet() -> Result<C2SPacket, DecodeError> {
-//     todo!()
-// }

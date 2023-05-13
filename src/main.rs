@@ -22,9 +22,11 @@ use log::{debug, error, info, log, trace, warn};
 
 mod config;
 mod connection;
+mod handler;
+mod player;
 mod shutdown;
 
-use crate::{connection::Handler, shutdown::Shutdown};
+use crate::{connection::Connection, handler::Handler, shutdown::Shutdown};
 
 use statik_common::prelude::*;
 
@@ -46,10 +48,11 @@ struct Server {
     /// The initial `notify_shutdown` trigger is provided by the `run` server
     /// function: the server is then responsible for gracefully shutting down active
     /// connections. When a connection task is spawned, it is passed a handle to
-    /// the broadcast receiver. When a graceful shutdown is initiated, a `()` value
-    /// is sent via the broadcast::Sender. Each active connection receives it,
-    /// reaches a safe termination state, and completes the task.
-    notify_shutdown: broadcast::Sender<()>,
+    /// the broadcast receiver. When a graceful shutdown is initiated, a `String`
+    /// value is sent via the broadcast::Sender. Each active connection receives it,
+    /// parses the template, reaches a safe termination state, and disconnects the
+    /// client, completing the tast.
+    notify_shutdown: broadcast::Sender<String>,
 
     /// Used as part of the graceful shutdown process to wait for client
     /// connections to complete processing.
@@ -63,14 +66,14 @@ struct Server {
     /// complete, all clones of the `Sender` are also dropped. This results in
     /// `shutdown_complete_rx.recv()` completing with `None`. At this point, it
     /// is safe to exit the server process.
-    shutdown_complete_tx: mpsc::Sender<()>,
+    shutdown_complete_tx: mpsc::Sender<String>,
 }
 
 impl Server {
     async fn new(
         config: ServerConfig,
-        notify_shutdown: broadcast::Sender<()>,
-        shutdown_complete_tx: mpsc::Sender<()>,
+        notify_shutdown: broadcast::Sender<String>,
+        shutdown_complete_tx: mpsc::Sender<String>,
     ) -> anyhow::Result<Self> {
         let mc_address = format!("{}:{}", config.host, config.port);
         let api_address = format!("{}:{}", config.host, config.api_port);
@@ -114,12 +117,14 @@ impl Server {
                             let shutdown_complete_tx = self.shutdown_complete_tx.clone();
                             let shutdown = Shutdown::new(self.notify_shutdown.subscribe());
 
+                            //replace this with shared config struct later
                             let config = self.config.clone();
+                            let config2 = self.config.clone();
 
                             tokio::spawn(async move {
 
                                 //handler
-                                Handler::new(config, stream, shutdown, shutdown_complete_tx).await.run().await;
+                                Handler::new(config, Connection::new(config2, stream, address).await, shutdown, shutdown_complete_tx).await.run().await;
 
                             });
                         },
@@ -154,10 +159,21 @@ impl Server {
         Ok(())
     }
 
-    async fn shutdown(&self) -> anyhow::Result<()> {
+    /// Gracefully sends shutdown signals to all clients connected to the
+    /// server. Supply `None` to use the default disconnect message, or
+    /// `Some(my_disconnecting_reason)` to send clients a custom disconnect
+    /// message. the message will be parsed using the [`Tera`] templater.
+    async fn shutdown(&self, reason: Option<String>) -> anyhow::Result<()> {
         info!("Shutting down the server...");
 
-        self.notify_shutdown.send(())?;
+        let template = match reason {
+            Some(template) => template,
+            None => self.config.read().await.disconnect_msg.clone(),
+        };
+
+        debug!("sending shutdown notice to connected clients, using disconnect message template: \"{template}\"");
+
+        self.notify_shutdown.send(template)?;
 
         Ok(())
     }
@@ -174,6 +190,7 @@ async fn main() -> anyhow::Result<()> {
     let config = ServerConfig {
         host: String::from("127.0.0.1"),
         max_players: 64,
+        disconnect_msg: String::from("{{ username }}, the server closed."),
         ..Default::default()
     };
 
@@ -182,7 +199,7 @@ async fn main() -> anyhow::Result<()> {
     // purpose. The call below ignores the receiver of the broadcast pair, and when
     // a receiver is needed, the subscribe() method on the sender is used to create
     // one.
-    let (notify_shutdown, mut _shutdown_rx) = broadcast::channel(1);
+    let (notify_shutdown, mut _shutdown_rx) = broadcast::channel::<String>(1);
     let (shutdown_complete_tx, mut _shutdown_complete_rx) = mpsc::channel(1);
 
     let mut server = Server::new(config, notify_shutdown, shutdown_complete_tx).await?;
@@ -203,30 +220,30 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
 
-            _ = signal::ctrl_c() => {
+            _ = shutdown::ctrl_c() => {
 
                 debug!("SIGINT (ctrl_c) OS signal recieved.");
-                server.shutdown().await?;
+                server.shutdown(None).await?;
                 break;
 
             },
             _ = shutdown::sigquit() => {
 
                 debug!("SIGQUIT (quit) OS signal recieved.");
-                server.shutdown().await?;
+                server.shutdown(None).await?;
                 break;
             },
             _ = shutdown::sigterm() => {
 
                 debug!("SIGTERM (terminate) OS signal recieved.");
-                server.shutdown().await?;
+                server.shutdown(None).await?;
                 break;
             },
             //shutdowns sent from the server itself (e.g. not an external OS signal)
-            _ = _shutdown_rx.recv() => {
+            reason = _shutdown_rx.recv() => {
 
                 debug!("internal shutdown signal recieved.");
-                server.shutdown().await;
+                server.shutdown(Some(reason?)).await;
                 break;
             }
         }
@@ -256,102 +273,3 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
-
-// #[tokio::main]
-// async fn main() -> anyhow::Result<()> {
-//     tracing_subscriber::fmt()
-//         .with_max_level(tracing::Level::DEBUG)
-//         .init();
-
-//     let addr = "127.0.0.1:25565";
-
-//     //change to accept cli commands
-//     let listener = TcpListener::bind(addr).await.unwrap();
-
-//     let (shutdown_send, mut shutdown_recv) = mpsc::unbounded_channel::<()>();
-//     let (done_send, mut done_recv) = mpsc::channel::<()>(1);
-
-//     info!("statik server is now up, broadcasting on {addr}");
-
-//     // S2CPacket::Status(S2CStatusPacket::StatusResponse(S2CStatusResponse { json_response:
-//     let b = StatusResponse::new(
-//         Version::new(MINECRAFT_VERSION, PROTOCOL_VERSION),
-//         Players::new(69, 0, vec![]),
-//         Chat::new("The HermitCrab Server!"),
-//         None,
-//         false,
-//     );
-//     // }}));
-
-//     // shutdown_send.send(());
-
-//     let c = serde_json::to_string_pretty(&b).unwrap();
-
-//     println!("{c}");
-
-//     loop {
-//         select! {
-//             res = listener.accept() => {
-//                 match res {
-//                     Ok((stream, address)) => {
-//                         debug!("new connection from {}", address);
-
-//                         let done = done_send.clone();
-//                         let shutdown = shutdown_send.clone();
-
-//                         tokio::spawn(async move {
-
-//                             process_connection(stream,shutdown, done).await;
-
-//                         });
-//                     },
-//                     Err(err) => error!("failed to accept connection: {:#}", anyhow!(err)),
-//                 }
-//             }
-//             _ = signal::ctrl_c() => { debug!("ctrl_c signal recieved."); info!("shutting down the server..."); shutdown_send.send(()); break; },
-//             _ = shutdown_recv.recv() => { debug!("shutdown signal recieved."); info!("shutting down the server...");  break; },
-//         }
-//     }
-
-//     drop(shutdown_send);
-//     drop(done_send);
-
-//     let _ = done_recv.recv().await;
-
-//     info!("the server has been shut down successfully.");
-
-//     Ok(())
-// }
-
-// async fn process(mut socket: TcpStream) {
-//     let mut stream = BufWriter::new(socket);
-
-//     tokio::spawn(async move {
-//         // In a loop, read data from the socket and write the data back.
-//         loop {
-//             let mut buf = BytesMut::new();
-
-//             // select! {
-
-//             // }
-
-//             let n = match stream.read(&mut buf).await {
-//                 // socket closed
-//                 Ok(n) if n == 0 => return,
-//                 Ok(n) => n,
-//                 Err(e) => {
-//                     eprintln!("failed to read from socket; err = {e:#}");
-//                     return;
-//                 }
-//             };
-
-//             println!("{n:#b}");
-
-//             //Write the data back
-//             if let Err(e) = stream.write_all(&buf[0..n]).await {
-//                 eprintln!("failed to write to socket; err = {:?}", e);
-//                 return;
-//             }
-//         }
-//     });
-// }

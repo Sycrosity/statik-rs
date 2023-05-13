@@ -37,12 +37,23 @@ pub struct ServerConfig {
     /// The URI (unique reference identifier) corresponding to the ~~website
     /// link or~~ local file containing the server icon.
     ///
-    /// Note: must be a 64x64 pixel image, or the minecraft client will not be able
-    /// to parse it.
+    /// Note: must be a 64x64 pixel image, or the minecraft client will not
+    /// be able to parse it, and the server will have a blank icon.
     pub icon: Option<String>,
 
     /// Whether this server appears online or not. Defaults to false.
     pub hidden: bool,
+
+    /// What message should be sent to the client by default when disconnecting them.
+    /// Defaults to: "Disconnected from the server."
+    ///
+    /// Note: this can be overridden by disconnect specific packets, this is merely
+    /// the default, no reason given fallback message.
+    /// Note: may use templating from [Tera](https://tera.netlify.app/), a templating
+    /// library inspired by Jinja2 and Django - read their [Documentation](https://tera.netlify.app/docs/)
+    /// and [Examples](https://github.com/Keats/tera/tree/master/examples) for possible
+    /// templates.
+    pub disconnect_msg: String,
 }
 
 impl Default for ServerConfig {
@@ -57,6 +68,7 @@ impl Default for ServerConfig {
             motd: String::from("A Statik server!"),
             icon: None,
             hidden: false,
+            disconnect_msg: String::from("Disconnected from the server."),
         }
     }
 }
