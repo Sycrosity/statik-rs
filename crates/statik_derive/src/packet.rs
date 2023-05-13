@@ -1,5 +1,5 @@
 use proc_macro2::{Span, TokenStream};
-use syn::{Attribute, Data, DeriveInput, Error, Expr, Fields, Lit, LitInt, Meta, Result, Variant};
+use syn::{Attribute, Data, DeriveInput, Error, Expr, Fields, Lit, LitInt, Meta, Result};
 
 pub fn expand_derive_packet(input: &mut DeriveInput) -> Result<TokenStream> {
     let DeriveInput {
@@ -141,7 +141,7 @@ fn extract_packet_id_attr(attrs: &[Attribute]) -> Result<Option<LitInt>> {
 
                 if let Expr::Lit(l) = &n.value {
                     if let Lit::Int(i) = &l.lit {
-                        return Ok(Some(i.clone()))
+                        return Ok(Some(i.clone()));
                     }
                 }
 

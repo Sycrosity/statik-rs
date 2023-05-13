@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 mod decode;
 mod encode;
 mod packet;
@@ -14,7 +12,6 @@ extern crate proc_macro;
 extern crate proc_macro2;
 
 use proc_macro::TokenStream;
-use syn::{DeriveInput, GenericParam, Generics};
 
 #[proc_macro_derive(Packet, attributes(packet_id))]
 pub fn derive_packet(input: TokenStream) -> TokenStream {

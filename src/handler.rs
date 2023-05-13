@@ -1,11 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use tokio::{
-    net::TcpStream,
-    sync::{mpsc, RwLock},
-};
-use uuid::Uuid;
+use tokio::sync::{mpsc, RwLock};
 
 use crate::{config::ServerConfig, connection::Connection, player::Player, shutdown::Shutdown};
 
@@ -57,7 +53,7 @@ impl Handler {
         shutdown: Shutdown,
         _shutdown_complete: mpsc::Sender<String>,
     ) -> Self {
-        let config_clone = config.clone();
+        let _config_clone = config.clone();
         Self {
             config,
             player: None,

@@ -60,7 +60,7 @@ impl Server {
         let mc_listener = TcpListener::bind(mc_address).await?;
         let api_listener = TcpListener::bind(api_address).await?;
 
-        let icon = match &config.icon {
+        let _icon = match &config.icon {
             Some(s) => Some(tokio::fs::read(s).await?),
             None => None,
         };
@@ -112,13 +112,13 @@ impl Server {
                 }
                 res = self.api_listener.accept() => {
                     match res {
-                        Ok((stream, address)) => {
+                        Ok((_stream, address)) => {
                             debug!("New api connection from {}", address);
 
-                            let shutdown_complete_tx = self.shutdown_complete_tx.clone();
-                            let shutdown = Shutdown::new(self.notify_shutdown.subscribe());
+                            let _shutdown_complete_tx = self.shutdown_complete_tx.clone();
+                            let _shutdown = Shutdown::new(self.notify_shutdown.subscribe());
 
-                            let config = self.config.clone();
+                            let _config = self.config.clone();
 
                             todo!()
 

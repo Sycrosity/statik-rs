@@ -1,27 +1,17 @@
 use std::{io::Cursor, net::SocketAddr, sync::Arc};
 
-use anyhow::{anyhow, bail};
+use anyhow::bail;
 use bytes::BytesMut;
 use statik_common::prelude::*;
 
-use statik_proto::{
-    c2s::handshaking::{handshake::C2SHandshake, legacy_ping::C2SLegacyPing, C2SHandshakingPacket},
-    state::State,
-};
+use statik_proto::{c2s::handshaking::C2SHandshakingPacket, state::State};
 use tokio::{
     io::{AsyncReadExt, BufWriter},
     net::TcpStream,
-    select,
-    sync::{
-        broadcast,
-        mpsc::{self, Sender, UnboundedSender},
-        RwLock,
-    },
+    sync::RwLock,
 };
 
-use uuid::Uuid;
-
-use crate::{shutdown::Shutdown, ServerConfig};
+use crate::ServerConfig;
 
 /// Checks if a username COULD be a valid minecraft account's username.
 ///

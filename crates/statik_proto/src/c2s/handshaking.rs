@@ -2,7 +2,7 @@ pub mod handshake;
 pub mod legacy_ping;
 
 use handshake::*;
-use legacy_ping::*;
+
 use statik_common::prelude::*;
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ impl Packet for C2SHandshakingPacket {
 }
 
 impl Encode for C2SHandshakingPacket {
-    fn encode(&self, buffer: impl std::io::Write) -> anyhow::Result<()> {
+    fn encode(&self, _buffer: impl std::io::Write) -> anyhow::Result<()> {
         todo!()
     }
 }

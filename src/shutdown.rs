@@ -3,8 +3,6 @@ use tokio::{
     sync::broadcast,
 };
 
-use statik_common::prelude::*;
-
 /// Listens for the server shutdown signal.
 ///
 /// Shutdown is signalled using a `broadcast::Receiver`. Only a single value is

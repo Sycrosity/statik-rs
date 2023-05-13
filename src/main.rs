@@ -1,24 +1,14 @@
-#![allow(unused)]
-
-use std::{io::Cursor, sync::Arc};
-
-use bytes::BytesMut;
 use config::ServerConfig;
-use statik_proto::s2c::status::{
-    response::{Players, S2CStatusResponse, StatusResponse, Version},
-    S2CStatusPacket,
-};
+
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt, BufWriter},
-    net::{TcpListener, TcpStream, ToSocketAddrs},
+    io::AsyncWriteExt,
     select,
-    signal::{self, unix::SignalKind},
-    sync::{broadcast, mpsc, RwLock},
+    sync::{broadcast, mpsc},
 };
 
 use anyhow::anyhow;
 
-use log::{debug, error, info, log, trace, warn};
+use log::{debug, error, info};
 
 mod config;
 mod connection;
@@ -27,9 +17,7 @@ mod player;
 mod server;
 mod shutdown;
 
-use crate::{connection::Connection, handler::Handler, server::Server, shutdown::Shutdown};
-
-use statik_common::prelude::*;
+use crate::server::Server;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
