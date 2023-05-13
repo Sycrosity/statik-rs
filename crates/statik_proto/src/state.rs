@@ -17,13 +17,13 @@ pub enum State {
 }
 
 impl Encode for State {
-    fn encode(&self, buffer: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn encode(&self, buffer: impl std::io::Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(buffer)
     }
 }
 
 impl Decode for State {
-    fn decode(buffer: &mut dyn std::io::Read) -> anyhow::Result<Self> {
+    fn decode(buffer: impl std::io::Read) -> anyhow::Result<Self> {
         Ok(match VarInt::decode(buffer)?.0 {
             0 => Self::Handshake,
             1 => Self::Status,

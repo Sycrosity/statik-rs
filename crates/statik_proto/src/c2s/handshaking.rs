@@ -14,6 +14,8 @@ pub enum C2SHandshakingPacket {
 }
 
 impl Packet for C2SHandshakingPacket {
+    const PACKET_ID: i32 = 0;
+
     fn id(&self) -> VarInt {
         match self {
             C2SHandshakingPacket::Handshake(_) => VarInt(0),
@@ -22,14 +24,14 @@ impl Packet for C2SHandshakingPacket {
 }
 
 impl Encode for C2SHandshakingPacket {
-    fn encode(&self, buffer: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn encode(&self, buffer: impl std::io::Write) -> anyhow::Result<()> {
         todo!()
     }
 }
 
 impl Decode for C2SHandshakingPacket {
-    fn decode(buffer: &mut dyn std::io::Read) -> anyhow::Result<Self> {
-        let id = VarInt::decode(buffer)?;
+    fn decode(mut buffer: impl std::io::Read) -> anyhow::Result<Self> {
+        let id = VarInt::decode(&mut buffer)?;
 
         debug!("Handshaking packet id: {id}");
 

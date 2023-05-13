@@ -3,6 +3,7 @@ pub mod request;
 
 use ping::*;
 use request::*;
+use statik_derive::{Packet, PrintTokenStream};
 
 #[derive(Debug)]
 pub enum C2SStatusPacket {

@@ -1,5 +1,3 @@
-use statik_derive::{Decode, Encode};
-
 use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
@@ -8,7 +6,10 @@ use uuid::Uuid;
 
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 
-#[derive(Debug, Encode, Decode)]
+use statik_derive::Packet;
+
+#[derive(Debug, Packet)]
+#[packet_id = 0x00]
 pub struct S2CStatusResponse {
     ///See [Server List Ping#Response](https://wiki.vg/Server_List_Ping#Response); as with all strings this is prefixed by its length as a VarInt.
     pub json_response: StatusResponse,
@@ -98,13 +99,13 @@ impl StatusResponse {
 }
 
 impl Encode for StatusResponse {
-    fn encode(&self, buffer: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn encode(&self, buffer: impl std::io::Write) -> anyhow::Result<()> {
         serde_json::to_string(self)?.encode(buffer)
     }
 }
 
 impl Decode for StatusResponse {
-    fn decode(buffer: &mut dyn std::io::Read) -> anyhow::Result<Self> {
+    fn decode(buffer: impl std::io::Read) -> anyhow::Result<Self> {
         Ok(serde_json::from_str(&String::decode(buffer)?)?)
     }
 }

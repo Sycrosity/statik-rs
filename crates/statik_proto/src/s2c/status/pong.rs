@@ -1,6 +1,7 @@
-use statik_derive::{Decode, Encode};
+use statik_derive::Packet;
 
-#[derive(Debug, Decode, Encode)]
+#[derive(Debug, Packet)]
+#[packet_id = 0x01]
 pub struct S2CPong {
     ///Should be the same as sent by the client.
     payload: i64,

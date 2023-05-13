@@ -17,7 +17,7 @@ impl std::fmt::Display for VarInt {
 }
 
 impl Decode for VarInt {
-    fn decode(buffer: &mut dyn Read) -> anyhow::Result<Self> {
+    fn decode(mut buffer: impl Read) -> anyhow::Result<Self> {
         let mut value = 0b0;
         let mut pos = 0b0;
 
@@ -39,7 +39,7 @@ impl Decode for VarInt {
     }
 }
 impl Encode for VarInt {
-    fn encode(&self, buffer: &mut dyn Write) -> anyhow::Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> anyhow::Result<()> {
         let mut value = self.0 as u32;
 
         loop {
