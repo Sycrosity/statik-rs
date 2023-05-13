@@ -31,7 +31,7 @@ impl Decode for C2SHandshakingPacket {
     fn decode(buffer: &mut dyn std::io::Read) -> anyhow::Result<Self> {
         let id = VarInt::decode(buffer)?;
 
-        debug!("{id}");
+        debug!("Handshaking packet id: {id}");
 
         Ok(match id.0 {
             0 => Self::Handshake(C2SHandshake::decode(buffer)?),
