@@ -1,17 +1,15 @@
-use proc_macro2::{Span, TokenStream};
-use syn::{Attribute, Data, DeriveInput, Error, Expr, Fields, Lit, LitInt, Meta, Result, Variant};
+use proc_macro2::TokenStream;
+use syn::{spanned::Spanned, Data, DeriveInput, Error, Fields, Ident, Result};
 
 pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream> {
     let DeriveInput {
-        // attrs: _attrs,
-        // vis: _vis,
+        // attrs,
+        // vis,
         ident: input_name,
-        // generics: _generics,
+        // generics,
         data,
         ..
     } = input;
-
-    // let attrs =
 
     match data {
         Data::Struct(s) => Err(Error::new(
@@ -19,126 +17,135 @@ pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream
             "cannot derive `Packet` on structs YET",
         )),
         Data::Enum(e) => {
-            let encode_arms = e
-                .variants
+            let fields = e.variants
                 .iter()
                 .map(|variant| {
-                    let variant_name = variant.ident;
+                    let variant_name = &variant.ident;
 
-                    let ctx = format!(
-                        "failed to encode enum variant `{variant_name}` \
-                         in `{ident}`",
+                    let enum_ctx = format!(
+                        "enum must have unnamed fields: `{variant_name}` \
+                         in `{input_name}` is not an unnamed field.",
                     );
 
                     match &variant.fields {
-                        Fields::Named(fields) => {
-                            let field_names = fields
-                                .named
-                                .iter()
-                                .map(|f| f.ident.as_ref().unwrap())
-                                .collect::<Vec<_>>();
-
-                            let encode_fields = field_names
-                                .iter()
-                                .map(|name| {
-                                    let ctx = format!(
-                                        "failed to encode field `{name}` in variant \
-                                         `{variant_name}` in `{input_name}`",
-                                    );
-
-                                    quote! {
-                                        #name.encode(&mut _w).context(#ctx)?;
-                                    }
-                                })
-                                .collect::<TokenStream>();
-
-                            quote! {
-                                Self::#variant_name { #(#field_names,)* } => {
-                                    VarInt(#disc).encode(&mut _buffer).context(#ctx)?;
-
-                                    #encode_fields
-                                    Ok(())
-                                }
-                            }
-                        }
                         Fields::Unnamed(fields) => {
-                            let field_names = (0..fields.unnamed.len())
-                                .map(|i| Ident::new(&format!("_{i}"), Span::call_site()))
-                                .collect::<Vec<_>>();
 
-                            let encode_fields = field_names
-                                .iter()
-                                .map(|name| {
-                                    let ctx = format!(
-                                        "failed to encode field `{name}` in variant \
-                                         `{variant_name}` in `{input_name}`"
-                                    );
+                            if fields.unnamed.len() != 1 {
 
-                                    quote! {
-                                        #name.encode(&mut _w).context(#ctx)?;
+                                return Err(Error::new(
+                                    fields.span(),
+                                    format!(
+                                        "variants of {input_name} must only have one field!",
+                                    ),
+                                ));
+
+                            }
+
+                            //SAFETY: can unwrap because of previous if statement checking length.
+                            let field = fields.unnamed.first().unwrap();
+
+                            let packet_name = match &field.ty {
+                                syn::Type::Path(p) => {
+
+                                    if let Some(ident) = p.path.get_ident() {
+                                        ident
+                                    } else {
+                                        return Err(Error::new(
+                                            field.span(),
+                                            format!(
+                                                "(shouldn't be possible) Field of variant {variant_name} of {input_name} must have an ident!",
+                                            ),
+                                        ));
                                     }
-                                })
-                                .collect::<TokenStream>();
+                                },
+                                _ => {
 
-                            quote! {
-                                Self::#variant_name(#(#field_names,)*) => {
-                                    VarInt(#disc).encode(&mut _w).context(#disc_ctx)?;
+                                    return Err(Error::new(
+                                        field.span(),
+                                        format!(
+                                            "Field of variant {variant_name} of {input_name} must be a path!",
+                                        ),
+                                    ));
 
-                                    #encode_fields
-                                    Ok(())
-                                }
+                                },
+                            };
+
+                            Ok((packet_name,variant_name))
+
+                        }
+                        _ => {
+                            return Err(Error::new(variant.ident.span(), enum_ctx));
+                        }
+                    }
+                })
+                .collect::<Result<Vec<(&Ident,&Ident)>>>()?;
+
+            let from_fields = fields
+                .iter()
+                .map(|(packet_name, variant_name)| {
+                    quote! {
+                        impl From<#packet_name> for #input_name {
+                            fn from(p: #packet_name) -> Self {
+                                Self::#variant_name(p)
                             }
                         }
-                        Fields::Unit => quote! {
-                            Self::#variant_name => Ok(
-                                VarInt(#disc)
-                                    .encode(&mut _w)
-                                    .context(#disc_ctx)?
-                            ),
+                    }
+                })
+                .collect::<TokenStream>();
+
+            let decode_fields = fields
+                .iter()
+                .map(|(packet_name, variant_name)| {
+                    quote! {
+                        #packet_name::PACKET_ID => {
+
+                            Ok(Self::#variant_name(#packet_name::decode(&mut _buffer)?))
+
                         },
                     }
                 })
                 .collect::<TokenStream>();
 
             Ok(quote! {
-                #[allow(unused_imports, unreachable_code)]
-                impl #impl_generics ::valence_core::__private::Encode for #input_name #ty_generics
-                #where_clause
-                {
-                    fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence_core::__private::Result<()> {
-                        use ::valence_core::__private::{Encode, VarInt, Context};
 
-                        match self {
-                            #encode_arms
-                            _ => unreachable!(),
+                #from_fields
+
+                impl ::statik_common::packet::Decode for #input_name {
+
+                    fn decode(mut _buffer: impl ::std::io::Read) -> ::anyhow::Result<Self> {
+
+                        use ::statik_common::{packet::{Decode, Packet}, varint::VarInt};
+                        use ::anyhow::{Context, ensure, bail, Error};
+
+                        match VarInt::decode(&mut _buffer)?.0 {
+
+                            #decode_fields
+                            _n => bail!("Invalid packet id! Tried to parse packet with id: {}", _n)
                         }
                     }
                 }
             })
+
+            // encode_arms
+            // Ok(quote! {
+            //     #[allow(unused_imports, unreachable_code)]
+            //     impl #impl_generics ::valence_core::__private::Encode for #input_name #ty_generics
+            //     #where_clause
+            //     {
+            //         fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence_core::__private::Result<()> {
+            //             use ::valence_core::__private::{Encode, VarInt, Context};
+
+            //             match self {
+            //                 #encode_arms
+            //                 _ => unreachable!(),
+            //             }
+            //         }
+            //     }
+            // })
         }
         Data::Union(u) => Err(Error::new(
             u.union_token.span,
             "cannot derive `Packet` on unions",
         )),
     }
-}
-
-fn extract_id_attr(attrs: &[Attribute]) -> Result<Option<LitInt>> {
-    for attr in attrs {
-        if let Meta::NameValue(n) = &attr.meta {
-            if n.path.is_ident("id") {
-                let span = n.path.segments.first().unwrap().ident.span();
-
-                if let Expr::Lit(l) = &n.value {
-                    match &l.lit {
-                        Lit::Int(i) => return Ok(Some(i.clone())),
-                        _ => (),
-                    }
-                }
-
-                return Err(Error::new(span, "packet ID must be an integer literal"));
-            }
-        }
-    }
-    Ok(None)
 }

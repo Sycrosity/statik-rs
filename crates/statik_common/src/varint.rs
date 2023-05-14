@@ -66,3 +66,9 @@ impl From<VarInt> for i32 {
         i.0
     }
 }
+
+impl From<VarInt> for usize {
+    fn from(i: VarInt) -> Self {
+        i.0 as usize
+    }
+}

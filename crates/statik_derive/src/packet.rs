@@ -101,9 +101,6 @@ pub fn expand_derive_packet(input: &mut DeriveInput) -> Result<TokenStream> {
                         use ::statik_common::{packet::Decode, varint::VarInt};
                         use ::anyhow::{Context, ensure};
 
-                        let id = VarInt::decode(&mut _buffer).context("failed to decode packet ID")?.0;
-                        ensure!(id == #packet_id, "unexpected packet ID {} (expected {})", id, #packet_id);
-
                         Ok(#decode_fields)
                     }
                 }
@@ -117,7 +114,6 @@ pub fn expand_derive_packet(input: &mut DeriveInput) -> Result<TokenStream> {
                         ::statik_common::varint::VarInt(Self::PACKET_ID)
 
                     }
-
                 }
             })
         }
