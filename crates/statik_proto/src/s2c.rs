@@ -1,10 +1,5 @@
 pub mod status;
 
-use statik_common::prelude::*;
-use status::*;
-
-use crate::state::State;
-
 // pub enum S2CPacket {
 //     Status(S2CStatusPacket),
 // }
@@ -20,7 +15,7 @@ use crate::state::State;
 // }
 
 // impl Decode for S2CPacket {
-//     fn decode(state: State, buffer: &mut dyn std::io::Read) -> Result<Self, DecodeError> {
+//     fn decode(state: State, buffer: impl std::io::Read) -> Result<Self, DecodeError> {
 //         match state {
 //             State::Handshake => todo!(),
 //             State::Status => todo!(),
@@ -31,7 +26,7 @@ use crate::state::State;
 // }
 
 // impl Encode for S2CPacket {
-//     fn encode(&self, buffer: &mut dyn std::io::Write) -> Result<(), EncodeError> {
+//     fn encode(&self, buffer: impl std::io::Write) -> Result<(), EncodeError> {
 //         match self {
 //             S2CPacket::Status(p) => p.encode(buffer),
 //         }

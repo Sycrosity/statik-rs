@@ -1,6 +1,6 @@
-use statik_derive::{Decode, Encode, Packet};
+use statik_derive::Packet;
 
-#[derive(Debug, Encode, Decode)]
-
+#[derive(Debug, Packet)]
+#[packet_id = 0x00]
 ///_no fields._
 pub struct C2SStatusRequest {}

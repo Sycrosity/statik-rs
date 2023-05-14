@@ -3,10 +3,10 @@ use syn::{DeriveInput, Error, Fields, Result};
 
 pub fn expand_derive_decode(input: &mut DeriveInput) -> Result<TokenStream> {
     let DeriveInput {
-        // attrs: _attrs,
-        // vis: _vis,
+        // attrs,
+        // vis,
         ident,
-        // generics: _generics,
+        // generics,
         data,
         ..
     } = input;
@@ -34,7 +34,7 @@ pub fn expand_derive_decode(input: &mut DeriveInput) -> Result<TokenStream> {
                         .map(|i| {
                             let ctx = format!("failed to decode field `{i}` in `{ident}`");
                             quote! {
-                                ::statik_common::prelude::Decode::decode(_buffer).context(#ctx)?,
+                                ::statik_common::prelude::Decode::decode(&mut _buffer).context(#ctx)?,
                             }
                         })
                         .collect::<TokenStream>();
@@ -50,7 +50,7 @@ pub fn expand_derive_decode(input: &mut DeriveInput) -> Result<TokenStream> {
                 #[allow(unused_imports)]
                 impl ::statik_common::packet::Decode for #ident
                 {
-                    fn decode(_buffer: &mut dyn ::std::io::Read) -> ::anyhow::Result<Self> {
+                    fn decode(mut _buffer: impl ::std::io::Read) -> ::anyhow::Result<Self> {
 
                         use ::statik_common::packet::Decode;
                         use ::anyhow::{Context, ensure};

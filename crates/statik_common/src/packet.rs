@@ -9,6 +9,8 @@ use crate::prelude::*;
 ///
 /// with the types: \[[VarInt], [VarInt], \[bytes\]\]
 pub trait Packet: Decode + Encode + Sized + std::fmt::Debug {
+    const PACKET_ID: i32;
+
     /// the VarInt ID of a specified packet (needed to send
     /// any type of any packet)
     fn id(&self) -> VarInt;
@@ -16,14 +18,16 @@ pub trait Packet: Decode + Encode + Sized + std::fmt::Debug {
     // /// any type of any packet) - should be derived from
     // /// the length of the Packet ID + Data length.
     // fn length(&self) -> VarInt;
+    // ///
+    // fn encode_packet()
 }
 
 pub trait Decode: Sized {
-    fn decode(buffer: &mut dyn Read) -> anyhow::Result<Self>;
+    fn decode(buffer: impl Read) -> anyhow::Result<Self>;
 }
 
 pub trait Encode: Sized {
-    fn encode(&self, buffer: &mut dyn Write) -> anyhow::Result<()>;
+    fn encode(&self, buffer: impl Write) -> anyhow::Result<()>;
 }
 
 pub const MAX_PACKET_SIZE: i32 = 2097152;

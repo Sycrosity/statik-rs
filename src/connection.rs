@@ -1,27 +1,28 @@
-use std::{io::Cursor, sync::Arc};
+use std::{
+    io::{self, Cursor, ErrorKind},
+    net::SocketAddr,
+    sync::Arc,
+};
 
-use anyhow::{anyhow, bail};
-use bytes::BytesMut;
+use anyhow::bail;
+use bytes::{Buf, BytesMut};
 use statik_common::prelude::*;
 
 use statik_proto::{
-    c2s::handshaking::{handshake::C2SHandshake, legacy_ping::C2SLegacyPing, C2SHandshakingPacket},
+    c2s::{handshaking::C2SHandshakingPacket, status::C2SStatusPacket},
+    s2c::status::{
+        pong::S2CPong,
+        response::{Players, S2CStatusResponse, StatusResponse},
+    },
     state::State,
 };
 use tokio::{
-    io::{AsyncReadExt, BufWriter},
+    io::{AsyncReadExt, AsyncWriteExt, BufWriter},
     net::TcpStream,
-    select,
-    sync::{
-        broadcast,
-        mpsc::{self, Sender, UnboundedSender},
-        RwLock,
-    },
+    sync::RwLock,
 };
 
-use uuid::Uuid;
-
-use crate::{shutdown::Shutdown, ServerConfig};
+use crate::ServerConfig;
 
 /// Checks if a username COULD be a valid minecraft account's username.
 ///
@@ -34,103 +35,6 @@ fn is_valid_username(username: &str) -> bool {
         && username
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_')
-}
-
-/// Per-connection handler. Reads packets sent from `connection` (a tcp stream from a
-/// minecraft client) and sends responses accordingly.
-#[derive(Debug)]
-pub(crate) struct Handler {
-    config: Arc<RwLock<ServerConfig>>,
-
-    /// A uniquely identifying UUID corresponding to the users minecraft account,
-    /// which can be used to check against a whitelist/blacklist/banlist, find
-    /// their username, download their currently active skin and more. Defaults
-    /// to None, until (or if) login sequence starts.
-    uuid: Option<Uuid>,
-
-    /// The username of an account as sent in the initial login packet. Defaults
-    /// to None, until (or if) login sequence starts.
-    username: Option<String>,
-
-    /// The TCP connection implemented using a buffered `TcpStream` for parsing
-    /// minecraft packets.
-    ///
-    /// When the [`Server`] receives an inbound connection, the `TcpStream` is
-    /// passed to `Connection::new`, which initializes the associated buffers.
-    /// `Connection` allows the handler to operate at the "frame" level and keep
-    /// the byte level protocol parsing details encapsulated in `Connection`.
-    connection: Connection,
-
-    /// Listen for shutdown notifications.
-    ///
-    /// A wrapper around the `broadcast::Receiver` paired with the sender in
-    /// [`Server`]. The connection handler processes requests from the
-    /// connection until the peer disconnects **or** a shutdown notification is
-    /// received from `shutdown`. In the latter case, any in-flight work being
-    /// processed for the peer is continued until it reaches a safe state, at
-    /// which point the connection is terminated.
-    shutdown: Shutdown,
-
-    /// Not used directly. Instead, when `Handler` is dropped, this cloned
-    /// to the shutdown channel is also dropped - all clones must be dropped
-    /// for the server to shutdown, and thus this is a good way of checking
-    /// when all connections have finished/been terminated.
-    _shutdown_complete: mpsc::Sender<()>,
-}
-
-impl Handler {
-    pub async fn new(
-        config: Arc<RwLock<ServerConfig>>,
-        stream: TcpStream,
-        shutdown: Shutdown,
-        _shutdown_complete: mpsc::Sender<()>,
-    ) -> Self {
-        let config_clone = config.clone();
-        Self {
-            config,
-            uuid: None,
-            username: None,
-            connection: Connection::new(config_clone, stream).await,
-            shutdown,
-            _shutdown_complete,
-        }
-    }
-
-    pub async fn run(&mut self) -> anyhow::Result<()> {
-        // As long as the shutdown signal has not been received, try to read a
-        // new request frame.
-
-        while !self.shutdown.is_shutdown() {
-            // While reading a request frame, also listen for the shutdown
-            // signal - otherwise on a long job this could hang!
-            let maybe_packet = tokio::select! {
-                res = self.connection.read_packet() => res?,
-                _ = self.shutdown.recv() => {
-                    // If a shutdown signal is received, return from `run`.
-                    // This will result in the task terminating.
-                    return Ok(());
-                }
-            };
-
-            //If `None` is returned from `read_frame()` then the peer closed
-            //the socket. There is no further work to do and the task can be
-            //terminated.
-            // let packet = match maybe_packet {
-            //     Some(packet) => packet,
-            //     None => return Ok(()),
-            // };
-
-            // let packet = self.connection.read_packet().await?;
-
-            let packet = maybe_packet.unwrap();
-
-            info!("Packet recieved: {packet:#?}");
-
-            todo!()
-        }
-
-        Ok(())
-    }
 }
 
 /// Send and receive `Frame` values from a minecraft client.
@@ -152,26 +56,42 @@ pub struct Connection {
     // The `TcpStream`. It is decorated with a `BufWriter`, which provides write
     // level buffering. The `BufWriter` implementation provided by Tokio is
     // sufficient for our needs.
-    stream: BufWriter<TcpStream>,
+    pub stream: BufWriter<TcpStream>,
 
-    // The buffer for reading frames.
-    buffer: BytesMut,
+    /// The address that the connection comes from.
+    pub address: SocketAddr,
+
+    /// The buffer for reading frames.
+    pub buffer: BytesMut,
+
+    /// Buffer used for queuing and sending bytes.
+    queue: Vec<u8>,
+
+    ///staging
+    staging: Vec<u8>,
 
     /// Current state of the handler: should go from 0 (Handshake) to 1 (status)
     /// or to 2 (login, which then goes to 3 (play))
-    state: State,
+    pub state: State,
 }
 
 impl Connection {
     /// Create a new `Connection`, backed by `socket`. Read and write buffers
     /// are initialized.
-    pub async fn new(config: Arc<RwLock<ServerConfig>>, socket: TcpStream) -> Self {
+    pub async fn new(
+        config: Arc<RwLock<ServerConfig>>,
+        socket: TcpStream,
+        address: SocketAddr,
+    ) -> Self {
         let max_packet_size = config.read().await.max_packet_size;
 
         Self {
             config,
             stream: BufWriter::new(socket),
+            address,
             buffer: BytesMut::with_capacity(max_packet_size),
+            queue: Vec::with_capacity(max_packet_size - 1),
+            staging: Vec::with_capacity(max_packet_size),
             state: State::Handshake,
         }
     }
@@ -187,32 +107,21 @@ impl Connection {
     /// On success, the received packet is returned. If the `TcpStream`
     /// is closed in a way that doesn't break a packet in half, it returns
     /// `None`. Otherwise, an error is returned.
-    pub async fn read_packet(&mut self) -> anyhow::Result<Option<impl Packet>> {
-        let bytes_read = self.stream.read_buf(&mut self.buffer).await?;
-
-        info!("Read {bytes_read} bytes ");
-
+    pub async fn handle_connection(&mut self) -> anyhow::Result<()> {
         loop {
-            if let Some(packet) = self.parse_packet()? {
-                return Ok(Some(packet));
+            debug!("handling connection with {}", self.address);
+
+            if self.buffer.is_empty() {
+                let bytes_read = self.stream.read_buf(&mut self.buffer).await?;
+
+                if bytes_read == 0 {
+                    return Err(io::Error::from(ErrorKind::UnexpectedEof).into());
+                }
+
+                trace!("read {bytes_read} bytes from {}.", self.address);
             }
 
-            // There is not enough buffered data to read a frame. Attempt to
-            // read more data from the socket.
-            //
-            // On success, the number of bytes is returned. `0` indicates "end
-            // of stream".
-            if 0 == self.stream.read_buf(&mut self.buffer).await? {
-                // The remote closed the connection. For this to be a clean
-                // shutdown, there should be no data in the read buffer. If
-                // there is, this means that the peer closed the socket while
-                // sending a frame.
-                if self.buffer.is_empty() {
-                    return Ok(None);
-                } else {
-                    bail!("connection reset by peer");
-                }
-            }
+            self.parse_packet().await?;
         }
     }
 
@@ -220,110 +129,120 @@ impl Connection {
     /// data, the frame is returned and the data removed from the buffer. If not
     /// enough data has been buffered yet, `Ok(None)` is returned. If the
     /// buffered data does not represent a valid frame, `Err` is returned.
-    pub fn parse_packet(&mut self) -> anyhow::Result<Option<impl Packet>> {
+    pub async fn parse_packet(&mut self) -> anyhow::Result<()> {
+        let (offset, length) = {
+            let mut buf = Cursor::new(&self.buffer[..]);
+
+            let length = VarInt::decode(&mut buf)?;
+
+            if self.buffer.len() < length.0 as usize + buf.position() as usize {
+                bail!(
+                    "Packet wasn't long enough!
+                    Packet was {} bytes long while the packet stated it should be {} bytes long.",
+                    self.buffer.len(),
+                    length
+                );
+            }
+
+            (buf.position() as usize, length.0 as usize)
+        };
+
+        self.buffer.advance(offset);
+
         // Cursor is used to track the "current" location in the
         // buffer. Cursor also implements `Buf` from the `bytes` crate
         // which provides a number of helpful utilities for working
         // with bytes.
-
-        // Ok(Some(C2SLegacyPing { payload: 0x01 }))
-        // todo!()
-        let mut buf = Cursor::new(&self.buffer[..]);
-
-        let packet_len = VarInt::decode(&mut buf)?.0 as usize;
-
-        if self.buffer.len() < packet_len {
-            bail!(
-                "Packet wasn't long enough!
-            Packet was {} bytes long when the prefixed VarInt said it should be {} bytes long.",
-                self.buffer.len(),
-                packet_len + 1
-            );
-        }
-
-        // self.buffer.reserve(packet_len);
+        let mut buf = Cursor::new(&self.buffer[..length]);
 
         match self.state {
             State::Handshake => {
-                // let handshake = C2SHandshakingPacket::decode(&mut buf)?;
-                // handshake
-
-                Ok(Some(C2SHandshakingPacket::decode(&mut buf)?))
+                self.handle_handshake(C2SHandshakingPacket::decode(&mut buf)?)
+                    .await?
             }
             State::Status => {
-                unimplemented!()
+                self.handle_status(C2SStatusPacket::decode(&mut buf)?)
+                    .await?
             }
             State::Login => unimplemented!(),
             State::Play => unimplemented!(),
         }
 
-        //     // The first step is to check if enough data has been buffered to parse
-        //     // a single frame. This step is usually much faster than doing a full
-        //     // parse of the frame, and allows us to skip allocating data structures
-        //     // to hold the frame data unless we know the full frame has been
-        //     // received.
-        //     match Frame::check(&mut buf) {
-        //         Ok(_) => {
-        //             // The `check` function will have advanced the cursor until the
-        //             // end of the frame. Since the cursor had position set to zero
-        //             // before `Frame::check` was called, we obtain the length of the
-        //             // frame by checking the cursor position.
-        //             let len = buf.position() as usize;
+        self.buffer.advance(length);
+        // }
+        Ok(())
+    }
 
-        //             // Reset the position to zero before passing the cursor to
-        //             // `Frame::parse`.
-        //             buf.set_position(0);
+    pub async fn handle_handshake(&mut self, packet: C2SHandshakingPacket) -> anyhow::Result<()> {
+        trace!("(↓) packet recieved: {:?}", &packet);
+        match packet {
+            C2SHandshakingPacket::Handshake(handshake) => {
+                if handshake.protocol_version.0 as usize != PROTOCOL_VERSION {
+                    return Err(anyhow::anyhow!("Protocol versions do not match! Client had protocol version: {}, while the server's protocol version is {}.", handshake.protocol_version.0, PROTOCOL_VERSION));
+                };
 
-        //             // Parse the frame from the buffer. This allocates the necessary
-        //             // structures to represent the frame and returns the frame
-        //             // value.
-        //             //
-        //             // If the encoded frame representation is invalid, an error is
-        //             // returned. This should terminate the **current** connection
-        //             // but should not impact any other connected client.
-        //             let frame = Frame::parse(&mut buf)?;
+                let next_state = handshake.next_state;
 
-        //             // Discard the parsed data from the read buffer.
-        //             //
-        //             // When `advance` is called on the read buffer, all of the data
-        //             // up to `len` is discarded. The details of how this works is
-        //             // left to `BytesMut`. This is often done by moving an internal
-        //             // cursor, but it may be done by reallocating and copying data.
-        //             self.buffer.advance(len);
+                self.state = next_state;
 
-        //             // Return the parsed frame to the caller.
-        //             Ok(Some(frame))
-        //         }
-        //         // There is not enough data present in the read buffer to parse a
-        //         // single frame. We must wait for more data to be received from the
-        //         // socket. Reading from the socket will be done in the statement
-        //         // after this `match`.
-        //         //
-        //         // We do not want to return `Err` from here as this "error" is an
-        //         // expected runtime condition.
-        //         Err(Incomplete) => Ok(None),
-        //         // An error was encountered while parsing the frame. The connection
-        //         // is now in an invalid state. Returning `Err` from here will result
-        //         // in the connection being closed.
-        //         Err(e) => Err(e.into()),
-        //     }
+                Ok(())
+            }
+        }
+    }
+
+    pub async fn handle_status(&mut self, packet: C2SStatusPacket) -> anyhow::Result<()> {
+        trace!("(↓) packet recieved: {:?}", &packet);
+        match packet {
+            C2SStatusPacket::StatusRequest(_status_request) => {
+                let config = self.config.read().await;
+
+                let status_response = S2CStatusResponse {
+                    json_response: StatusResponse::new(
+                        Players::new(config.max_players, 0, vec![]),
+                        Chat::new(config.motd.clone()),
+                        None,
+                        false,
+                    ),
+                };
+
+                drop(config);
+
+                self.write_packet(status_response).await?;
+
+                Ok(())
+            }
+            C2SStatusPacket::Ping(ping) => {
+                let pong = S2CPong {
+                    payload: ping.payload,
+                };
+
+                self.write_packet(pong).await?;
+
+                Ok(())
+            }
+        }
+    }
+
+    ///jank as. fix later.
+    pub async fn write_packet(&mut self, packet: impl Packet) -> anyhow::Result<()> {
+        packet.encode(&mut self.queue)?;
+
+        let packet_len = self.queue.len();
+        VarInt(packet_len as i32).encode(&mut self.staging)?;
+
+        self.staging.extend_from_slice(&self.queue);
+
+        trace!("writing packet to tcp stream.");
+        self.stream.write_all(&self.staging).await?;
+
+        self.stream.flush().await?;
+
+        self.queue.clear();
+
+        trace!("(↑) packet sent: {packet:?}");
+
+        self.staging.clear();
+
+        Ok(())
     }
 }
-
-// pub async fn process_connection(
-//     stream: TcpStream,
-//     _shutdown: UnboundedSender<()>,
-//     _done: Sender<()>,
-// ) {
-//     let writer = BufWriter::new(stream);
-
-//     let buffer = BytesMut::new();
-
-//     // loop {
-//     //     select! {}
-//     // }
-// }
-
-// async fn read_packet() -> Result<C2SPacket, DecodeError> {
-//     todo!()
-// }

@@ -14,7 +14,7 @@ use crate::prelude::*;
 // = Encode impls = \\
 
 impl Encode for bool {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_u8(*self as u8)?)
     }
 }
@@ -22,31 +22,31 @@ impl Encode for bool {
 // unsigned ints \\
 
 impl Encode for u8 {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_u8(*self)?)
     }
 }
 
 impl Encode for u16 {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_u16::<BigEndian>(*self)?)
     }
 }
 
 impl Encode for u32 {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_u32::<BigEndian>(*self)?)
     }
 }
 
 impl Encode for u64 {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_u64::<BigEndian>(*self)?)
     }
 }
 
 impl Encode for u128 {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_u128::<BigEndian>(*self)?)
     }
 }
@@ -54,31 +54,31 @@ impl Encode for u128 {
 // signed ints \\
 
 impl Encode for i8 {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_i8(*self)?)
     }
 }
 
 impl Encode for i16 {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_i16::<BigEndian>(*self)?)
     }
 }
 
 impl Encode for i32 {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_i32::<BigEndian>(*self)?)
     }
 }
 
 impl Encode for i64 {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_i64::<BigEndian>(*self)?)
     }
 }
 
 impl Encode for i128 {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_i128::<BigEndian>(*self)?)
     }
 }
@@ -86,7 +86,7 @@ impl Encode for i128 {
 // = Decode impls = \\
 
 impl Decode for bool {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+    fn decode(mut buffer: impl Read) -> Result<Self> {
         let n = buffer.read_u8()?;
         ensure!(n <= 1, "decoded boolean is not 0 or 1 (got {n})");
         Ok(n == 1)
@@ -96,31 +96,31 @@ impl Decode for bool {
 // unsigned ints \\
 
 impl Decode for u8 {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+    fn decode(mut buffer: impl Read) -> Result<Self> {
         Ok(buffer.read_u8()?)
     }
 }
 
 impl Decode for u16 {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+    fn decode(mut buffer: impl Read) -> Result<Self> {
         Ok(buffer.read_u16::<BigEndian>()?)
     }
 }
 
 impl Decode for u32 {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+    fn decode(mut buffer: impl Read) -> Result<Self> {
         Ok(buffer.read_u32::<BigEndian>()?)
     }
 }
 
 impl Decode for u64 {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+    fn decode(mut buffer: impl Read) -> Result<Self> {
         Ok(buffer.read_u64::<BigEndian>()?)
     }
 }
 
 impl Decode for u128 {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+    fn decode(mut buffer: impl Read) -> Result<Self> {
         Ok(buffer.read_u128::<BigEndian>()?)
     }
 }
@@ -128,31 +128,31 @@ impl Decode for u128 {
 // signed ints \\
 
 impl Decode for i8 {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+    fn decode(mut buffer: impl Read) -> Result<Self> {
         Ok(buffer.read_i8()?)
     }
 }
 
 impl Decode for i16 {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+    fn decode(mut buffer: impl Read) -> Result<Self> {
         Ok(buffer.read_i16::<BigEndian>()?)
     }
 }
 
 impl Decode for i32 {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+    fn decode(mut buffer: impl Read) -> Result<Self> {
         Ok(buffer.read_i32::<BigEndian>()?)
     }
 }
 
 impl Decode for i64 {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+    fn decode(mut buffer: impl Read) -> Result<Self> {
         Ok(buffer.read_i64::<BigEndian>()?)
     }
 }
 
 impl Decode for i128 {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+    fn decode(mut buffer: impl Read) -> Result<Self> {
         Ok(buffer.read_i128::<BigEndian>()?)
     }
 }
@@ -160,21 +160,21 @@ impl Decode for i128 {
 // = String = //
 
 impl Encode for String {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
         let len = self.len();
         ensure!(
             len <= i32::MAX as usize,
             "byte length of string ({len}) exceeds i32::MAX"
         );
 
-        VarInt(self.len() as i32).encode(buffer)?;
+        VarInt(self.len() as i32).encode(&mut buffer)?;
         Ok(buffer.write_all(self.as_bytes())?)
     }
 }
 
 impl Decode for String {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
-        let len = VarInt::decode(buffer)?.0;
+    fn decode(mut buffer: impl Read) -> Result<Self> {
+        let len = VarInt::decode(&mut buffer)?.0;
 
         ensure!(len >= 0, "attempt to decode struct with negative length");
         let len = len as usize;
@@ -197,7 +197,7 @@ impl<'a, B> Encode for Cow<'a, B>
 where
     B: ToOwned + Encode + ?Sized,
 {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, buffer: impl Write) -> Result<()> {
         self.as_ref().encode(buffer)
     }
 }
@@ -207,19 +207,19 @@ where
     B: ToOwned + ?Sized,
     B::Owned: Decode,
 {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+    fn decode(buffer: impl Read) -> Result<Self> {
         B::Owned::decode(buffer).map(Cow::Owned)
     }
 }
 
 impl Encode for Uuid {
-    fn encode(&self, buffer: &mut dyn Write) -> Result<()> {
+    fn encode(&self, buffer: impl Write) -> Result<()> {
         self.as_u128().encode(buffer)
     }
 }
 
 impl Decode for Uuid {
-    fn decode(buffer: &mut dyn Read) -> Result<Self> {
+    fn decode(buffer: impl Read) -> Result<Self> {
         u128::decode(buffer).map(Uuid::from_u128)
     }
 }
