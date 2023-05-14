@@ -71,7 +71,6 @@ impl Handler {
     //     ),
     // )]
     pub async fn run(&mut self) -> anyhow::Result<()> {
-
         // As long as the shutdown signal has not been received, try to read a
         // new packet.
         while !self.shutdown.is_shutdown() {

@@ -83,7 +83,7 @@ impl Server {
                 res = self.mc_listener.accept() => {
                     match res {
                         Ok((stream, address)) => {
-                            debug!("New mc connection from {}", address);
+                            info!("New mc connection from {}.", address);
 
                             let shutdown_complete_tx = self.shutdown_complete_tx.clone();
                             let shutdown = Shutdown::new(self.notify_shutdown.subscribe());
@@ -98,7 +98,7 @@ impl Server {
                                     error!("Connection error: {err:#}");
                                 }
 
-                                info!("connection with mc client {} ended.", address);
+                                info!("Connection with mc client {} ended.", address);
 
                             });
                         },
@@ -108,7 +108,7 @@ impl Server {
                 res = self.api_listener.accept() => {
                     match res {
                         Ok((_stream, address)) => {
-                            debug!("New api connection from {}", address);
+                            info!("New api connection from {}.", address);
 
                             let _shutdown_complete_tx = self.shutdown_complete_tx.clone();
                             let _shutdown = Shutdown::new(self.notify_shutdown.subscribe());

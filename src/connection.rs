@@ -118,7 +118,7 @@ impl Connection {
                     return Err(io::Error::from(ErrorKind::UnexpectedEof).into());
                 }
 
-                trace!("Read {bytes_read} bytes from {}.", self.address);
+                trace!("read {bytes_read} bytes from {}.", self.address);
             }
 
             self.parse_packet().await?;
@@ -147,8 +147,6 @@ impl Connection {
             (buf.position() as usize, length.0 as usize)
         };
 
-        trace!("Packet should be {} bytes long", length);
-
         self.buffer.advance(offset);
 
         // Cursor is used to track the "current" location in the
@@ -176,7 +174,7 @@ impl Connection {
     }
 
     pub async fn handle_handshake(&mut self, packet: C2SHandshakingPacket) -> anyhow::Result<()> {
-        trace!("(↓) Packet recieved: {:?}", &packet);
+        trace!("(↓) packet recieved: {:?}", &packet);
         match packet {
             C2SHandshakingPacket::Handshake(handshake) => {
                 if handshake.protocol_version.0 as usize != PROTOCOL_VERSION {
@@ -193,7 +191,7 @@ impl Connection {
     }
 
     pub async fn handle_status(&mut self, packet: C2SStatusPacket) -> anyhow::Result<()> {
-        trace!("(↓) Packet recieved: {:?}", &packet);
+        trace!("(↓) packet recieved: {:?}", &packet);
         match packet {
             C2SStatusPacket::StatusRequest(_status_request) => {
                 let config = self.config.read().await;
