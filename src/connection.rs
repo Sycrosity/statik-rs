@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::bail;
-use bytes::{BytesMut, Buf};
+use bytes::{Buf, BytesMut};
 use statik_common::prelude::*;
 
 use statik_proto::{
@@ -111,9 +111,7 @@ impl Connection {
     /// `None`. Otherwise, an error is returned.
     pub async fn handle_connection(&mut self) -> anyhow::Result<()> {
         loop {
-            
             warn!("handling connection");
-
 
             let bytes_read = self.stream.read_buf(&mut self.buffer).await?;
 
@@ -123,7 +121,6 @@ impl Connection {
 
             trace!("Read {bytes_read} bytes from {}.", self.address);
             // println!("{:?}", &self.buffer);
-
 
             self.parse_packet().await?;
         }
@@ -154,7 +151,6 @@ impl Connection {
     /// enough data has been buffered yet, `Ok(None)` is returned. If the
     /// buffered data does not represent a valid frame, `Err` is returned.
     pub async fn parse_packet(&mut self) -> anyhow::Result<()> {
-
         // Cursor is used to track the "current" location in the
         // buffer. Cursor also implements `Buf` from the `bytes` crate
         // which provides a number of helpful utilities for working
@@ -164,17 +160,16 @@ impl Connection {
         // todo!()
 
         loop {
-
             let buffer_len = self.buffer.len();
 
             println!("{:?}", &self.buffer);
 
             let mut buf = Cursor::new(&self.buffer[..]);
-    
+
             let packet_len = VarInt::decode(&mut buf)?.0 as usize;
-    
+
             trace!("Packet should be {} bytes long", packet_len + 1);
-    
+
             if buffer_len < packet_len {
                 bail!(
                     "Packet wasn't long enough!
@@ -183,7 +178,7 @@ impl Connection {
                     packet_len + 1
                 );
             }
-    
+
             match self.state {
                 State::Handshake => {
                     warn!("here3");
@@ -193,11 +188,12 @@ impl Connection {
                 }
                 State::Status => {
                     println!("s: {:?}", &buf);
-                    self.handle_status(C2SStatusPacket::decode(&mut buf)?).await?
-                },
+                    self.handle_status(C2SStatusPacket::decode(&mut buf)?)
+                        .await?
+                }
                 State::Login => unimplemented!(),
                 State::Play => unimplemented!(),
-            }   
+            }
         }
         // Ok(())
     }
@@ -225,7 +221,6 @@ impl Connection {
         trace!("(↓) Packet recieved: {:?}", &packet);
         match packet {
             C2SStatusPacket::StatusRequest(_status_request) => {
-
                 warn!("status_req");
 
                 let config = self.config.read().await;
@@ -246,9 +241,8 @@ impl Connection {
                 Ok(())
             }
             C2SStatusPacket::Ping(ping) => {
-
                 warn!("pong");
-                
+
                 let pong = S2CPong {
                     payload: ping.payload,
                 };
@@ -276,7 +270,6 @@ impl Connection {
         VarInt(packet_len as i32).encode(&mut self.staging)?;
 
         self.staging.extend_from_slice(&self.queue);
-
 
         trace!("Writing packet to tcp stream.");
         self.stream.write_all(&self.staging).await?;

@@ -1,6 +1,9 @@
 use std::{io, sync::Arc};
 
-use tokio::{sync::{mpsc, RwLock}, io::AsyncReadExt};
+use tokio::{
+    io::AsyncReadExt,
+    sync::{mpsc, RwLock},
+};
 
 use crate::{config::ServerConfig, connection::Connection, player::Player, shutdown::Shutdown};
 
@@ -71,9 +74,8 @@ impl Handler {
     //     ),
     // )]
     pub async fn run(&mut self) -> anyhow::Result<()> {
-
         // self.connection.stream.read_buf(&mut self.connection.buffer).await?;
-        
+
         // As long as the shutdown signal has not been received, try to read a
         // new packet.
         while !self.shutdown.is_shutdown() {
