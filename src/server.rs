@@ -77,14 +77,6 @@ impl Server {
     }
 
     pub async fn run(&mut self) -> anyhow::Result<()> {
-        {
-            let config = self.config.read().await;
-
-            let address = format!("{}:{}", config.host, config.port);
-
-            info!("Statik server is up! Broadcasting on {address}.");
-        }
-
         loop {
             select! {
 
@@ -102,10 +94,9 @@ impl Server {
 
                             tokio::spawn(async move {
 
-                                //handler
-                                Handler::new(config, Connection::new(config2, stream, address).await, shutdown, shutdown_complete_tx).await.run().await;
+                                Handler::new(config, Connection::new(config2, stream, address).await, shutdown, shutdown_complete_tx).await.run().await
 
-                            });
+                            }).await??;
                         },
                         Err(err) => error!("Failed to accept mc connection: {:#}", anyhow::anyhow!(err)),
                     }
@@ -134,8 +125,6 @@ impl Server {
                 }
             }
         }
-
-        Ok(())
     }
 
     /// Gracefully sends shutdown signals to all clients connected to the

@@ -63,6 +63,14 @@ impl Handler {
         }
     }
 
+    // #[tracing::instrument(
+    //     name = "Handler::run",
+    //     skip(self),
+    //     fields(
+    //         // `%` serializes the peer IP addr with `Display`
+    //         peer_addr = %self.connection.address
+    //     ),
+    // )]
     pub async fn run(&mut self) -> Result<()> {
         // As long as the shutdown signal has not been received, try to read a
         // new packet.
@@ -70,7 +78,7 @@ impl Handler {
             // While reading a packet, also listen for the shutdown
             // signal - otherwise on a long job this could hang!
             let maybe_packet = tokio::select! {
-                res = {tokio::time::sleep(std::time::Duration::from_secs(5)).await; self.connection.read_packet()} => res?,
+                res = {self.connection.read_packet()} => res?,
                 // If a shutdown signal is received, return from `run`.
                 // This will result in the task terminating.
                 reason = self.shutdown.recv() => {

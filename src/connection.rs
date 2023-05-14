@@ -4,7 +4,10 @@ use anyhow::bail;
 use bytes::BytesMut;
 use statik_common::prelude::*;
 
-use statik_proto::{c2s::handshaking::C2SHandshakingPacket, state::State};
+use statik_proto::{
+    c2s::{handshaking::C2SHandshakingPacket, status::C2SStatusPacket},
+    state::State,
+};
 use tokio::{
     io::{AsyncReadExt, BufWriter},
     net::TcpStream,
@@ -136,7 +139,7 @@ impl Connection {
         if self.buffer.len() < packet_len {
             bail!(
                 "Packet wasn't long enough!
-            Packet was {} bytes long when the prefixed VarInt said it should be {} bytes long.",
+            Packet was {} bytes long while the packet stated it should be {} bytes long.",
                 self.buffer.len(),
                 packet_len + 1
             );
@@ -145,12 +148,21 @@ impl Connection {
         // self.buffer.reserve(packet_len);
 
         match self.state {
-            State::Handshake => {
-                // let handshake = C2SHandshakingPacket::decode(&mut buf)?;
-                // handshake
+            State::Handshake => match C2SHandshakingPacket::decode(&mut buf)? {
+                C2SHandshakingPacket::Handshake(handshake) => {
+                    if handshake.protocol_version.0 as usize != PROTOCOL_VERSION {
+                        return Err(anyhow::anyhow!("Protocol versions do not match! Client had protocol version: {}, while the server's protocol version is {}.", handshake.protocol_version.0, PROTOCOL_VERSION));
+                    };
 
-                Ok(Some(C2SHandshakingPacket::decode(&mut buf)?))
-            }
+                    let next_state = handshake.next_state;
+
+                    self.state = next_state;
+
+                    Ok(Some(handshake))
+                }
+
+                _ => unimplemented!(),
+            },
             State::Status => {
                 unimplemented!()
             }

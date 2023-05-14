@@ -1,7 +1,8 @@
+#![allow(dead_code)]
+
 use config::ServerConfig;
 
 use tokio::{
-    io::AsyncWriteExt,
     select,
     sync::{broadcast, mpsc},
 };
@@ -21,18 +22,23 @@ use crate::server::Server;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .init();
-
-    info!("Statik server is starting.");
-
     let config = ServerConfig {
         host: String::from("127.0.0.1"),
         max_players: 64,
         disconnect_msg: String::from("{{ username }}, the server closed."),
         ..Default::default()
     };
+
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE)
+        .with_line_number(true)
+        // .with_file(true)
+        // .with_thread_names(true)
+        .init();
+
+    info!("Statik server is starting.");
+
+    let address = format!("{}:{}", &config.host, &config.port);
 
     // When the provided `shutdown` future completes, we must send a shutdown
     // message to all active connections. We use a broadcast channel for this
@@ -43,6 +49,8 @@ async fn main() -> anyhow::Result<()> {
     let (shutdown_complete_tx, mut _shutdown_complete_rx) = mpsc::channel(1);
 
     let mut server = Server::new(config, notify_shutdown, shutdown_complete_tx).await?;
+
+    info!("Statik server is up! Broadcasting on {address}.");
 
     loop {
         select! {
@@ -83,7 +91,7 @@ async fn main() -> anyhow::Result<()> {
             reason = _shutdown_rx.recv() => {
 
                 debug!("internal shutdown signal recieved.");
-                server.shutdown(Some(reason?)).await;
+                server.shutdown(Some(reason?)).await?;
                 break;
             }
         }

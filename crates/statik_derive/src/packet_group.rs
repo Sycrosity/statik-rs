@@ -74,7 +74,7 @@ pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream
 
                         }
                         _ => {
-                            return Err(Error::new(variant.ident.span(), enum_ctx));
+                            Err(Error::new(variant.ident.span(), enum_ctx))
                         }
                     }
                 })
