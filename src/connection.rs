@@ -2,7 +2,6 @@ use std::{
     io::{self, Cursor, ErrorKind},
     net::SocketAddr,
     sync::Arc,
-    time::Duration,
 };
 
 use anyhow::bail;
@@ -21,7 +20,6 @@ use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufWriter},
     net::TcpStream,
     sync::RwLock,
-    time::timeout,
 };
 
 use crate::ServerConfig;
@@ -113,7 +111,7 @@ impl Connection {
         loop {
             debug!("handling connection with {}", self.address);
 
-            if self.buffer.len() == 0 {
+            if self.buffer.is_empty() {
                 let bytes_read = self.stream.read_buf(&mut self.buffer).await?;
 
                 if bytes_read == 0 {
@@ -132,9 +130,6 @@ impl Connection {
     /// enough data has been buffered yet, `Ok(None)` is returned. If the
     /// buffered data does not represent a valid frame, `Err` is returned.
     pub async fn parse_packet(&mut self) -> anyhow::Result<()> {
-
-
-
         let (offset, length) = {
             let mut buf = Cursor::new(&self.buffer[..]);
 
@@ -155,7 +150,7 @@ impl Connection {
         trace!("Packet should be {} bytes long", length);
 
         self.buffer.advance(offset);
-        
+
         // Cursor is used to track the "current" location in the
         // buffer. Cursor also implements `Buf` from the `bytes` crate
         // which provides a number of helpful utilities for working
@@ -201,7 +196,6 @@ impl Connection {
         trace!("(↓) Packet recieved: {:?}", &packet);
         match packet {
             C2SStatusPacket::StatusRequest(_status_request) => {
-
                 let config = self.config.read().await;
 
                 let status_response = S2CStatusResponse {
@@ -220,7 +214,6 @@ impl Connection {
                 Ok(())
             }
             C2SStatusPacket::Ping(ping) => {
-
                 let pong = S2CPong {
                     payload: ping.payload,
                 };
@@ -234,7 +227,6 @@ impl Connection {
 
     ///jank as. fix later.
     pub async fn write_packet(&mut self, packet: impl Packet) -> anyhow::Result<()> {
-
         packet.encode(&mut self.queue)?;
 
         let packet_len = self.queue.len();
