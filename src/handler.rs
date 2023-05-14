@@ -85,17 +85,20 @@ impl Handler {
                 res = self.connection.handle_connection() => {
 
                     if let Err(e) = res {
+
                         // EOF can happen if the client disconnects while joining, which isn't
                         // very erroneous.
                         if let Some(er) = e.downcast_ref::<io::Error>() {
+
                             if er.kind() == io::ErrorKind::UnexpectedEof {
-                                return Err(anyhow::anyhow!("connection ended due to clientside timeout"));
+                                // return Err(anyhow::anyhow!("connection ended due to: {er} (timeout)"));
+                                return Ok(());
                             }
                         }
                         return Err(anyhow::anyhow!("connection ended with error: {e:#}"));
                     }
 
-                    info!("connection with {} ended.", self.connection.address);
+                    warn!("shouldn't be possible to be here!");
                 },
                 // If a shutdown signal is received, return from `run`.
                 // This will result in the task terminating.

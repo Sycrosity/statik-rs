@@ -98,6 +98,8 @@ impl Server {
                                     error!("Connection error: {err:#}");
                                 }
 
+                                info!("connection with mc client {} ended.", address);
+
                             });
                         },
                         Err(err) => error!("Failed to accept mc connection: {:#}", anyhow::anyhow!(err)),

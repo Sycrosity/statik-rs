@@ -111,39 +111,20 @@ impl Connection {
     /// `None`. Otherwise, an error is returned.
     pub async fn handle_connection(&mut self) -> anyhow::Result<()> {
         loop {
-            warn!("handling connection");
+            debug!("handling connection with {}", self.address);
 
-            let bytes_read = self.stream.read_buf(&mut self.buffer).await?;
+            if self.buffer.len() == 0 {
+                let bytes_read = self.stream.read_buf(&mut self.buffer).await?;
 
-            if bytes_read == 0 {
-                return Err(io::Error::from(ErrorKind::UnexpectedEof).into());
+                if bytes_read == 0 {
+                    return Err(io::Error::from(ErrorKind::UnexpectedEof).into());
+                }
+
+                trace!("Read {bytes_read} bytes from {}.", self.address);
             }
-
-            trace!("Read {bytes_read} bytes from {}.", self.address);
-            // println!("{:?}", &self.buffer);
 
             self.parse_packet().await?;
         }
-
-        //timeout(Duration::from_secs(10), async {})
-
-        // There is not enough buffered data to read a frame. Attempt to
-        // read more data from the socket.
-        //
-        // On success, the number of bytes is returned. `0` indicates "end
-        // of stream".
-        // if 0 == self.stream.read_buf(&mut self.buffer).await? {
-        //     // The remote closed the connection. For this to be a clean
-        //     // shutdown, there should be no data in the read buffer. If
-        //     // there is, this means that the peer closed the socket while
-        //     // sending a frame.
-        //     if self.buffer.is_empty() {
-        //         return Ok(None);
-        //     } else {
-        //         bail!("connection reset by peer");
-        //     }
-        // }
-        // }
     }
 
     /// Tries to parse a frame from the buffer. If the buffer contains enough
@@ -151,51 +132,52 @@ impl Connection {
     /// enough data has been buffered yet, `Ok(None)` is returned. If the
     /// buffered data does not represent a valid frame, `Err` is returned.
     pub async fn parse_packet(&mut self) -> anyhow::Result<()> {
+
+
+
+        let (offset, length) = {
+            let mut buf = Cursor::new(&self.buffer[..]);
+
+            let length = VarInt::decode(&mut buf)?;
+
+            if self.buffer.len() < length.0 as usize + buf.position() as usize {
+                bail!(
+                    "Packet wasn't long enough!
+                    Packet was {} bytes long while the packet stated it should be {} bytes long.",
+                    self.buffer.len(),
+                    length
+                );
+            }
+
+            (buf.position() as usize, length.0 as usize)
+        };
+
+        trace!("Packet should be {} bytes long", length);
+
+        self.buffer.advance(offset);
+        
         // Cursor is used to track the "current" location in the
         // buffer. Cursor also implements `Buf` from the `bytes` crate
         // which provides a number of helpful utilities for working
         // with bytes.
+        let mut buf = Cursor::new(&self.buffer[..length]);
 
-        // Ok(Some(C2SLegacyPing { payload: 0x01 }))
-        // todo!()
-
-        loop {
-            let buffer_len = self.buffer.len();
-
-            println!("{:?}", &self.buffer);
-
-            let mut buf = Cursor::new(&self.buffer[..]);
-
-            let packet_len = VarInt::decode(&mut buf)?.0 as usize;
-
-            trace!("Packet should be {} bytes long", packet_len + 1);
-
-            if buffer_len < packet_len {
-                bail!(
-                    "Packet wasn't long enough!
-                Packet was {} bytes long while the packet stated it should be {} bytes long.",
-                    self.buffer.len(),
-                    packet_len + 1
-                );
+        match self.state {
+            State::Handshake => {
+                self.handle_handshake(C2SHandshakingPacket::decode(&mut buf)?)
+                    .await?
             }
-
-            match self.state {
-                State::Handshake => {
-                    warn!("here3");
-                    println!("h: {:?}", &buf);
-                    self.handle_handshake(C2SHandshakingPacket::decode(&mut buf)?)
-                        .await?
-                }
-                State::Status => {
-                    println!("s: {:?}", &buf);
-                    self.handle_status(C2SStatusPacket::decode(&mut buf)?)
-                        .await?
-                }
-                State::Login => unimplemented!(),
-                State::Play => unimplemented!(),
+            State::Status => {
+                self.handle_status(C2SStatusPacket::decode(&mut buf)?)
+                    .await?
             }
+            State::Login => unimplemented!(),
+            State::Play => unimplemented!(),
         }
-        // Ok(())
+
+        self.buffer.advance(length);
+        // }
+        Ok(())
     }
 
     pub async fn handle_handshake(&mut self, packet: C2SHandshakingPacket) -> anyhow::Result<()> {
@@ -211,9 +193,7 @@ impl Connection {
                 self.state = next_state;
 
                 Ok(())
-            } // C2SHandshakingPacket::LegacyPing(_legacy_ping) => {
-              //     unimplemented!()
-              // }
+            }
         }
     }
 
@@ -221,7 +201,6 @@ impl Connection {
         trace!("(↓) Packet recieved: {:?}", &packet);
         match packet {
             C2SStatusPacket::StatusRequest(_status_request) => {
-                warn!("status_req");
 
                 let config = self.config.read().await;
 
@@ -241,7 +220,6 @@ impl Connection {
                 Ok(())
             }
             C2SStatusPacket::Ping(ping) => {
-                warn!("pong");
 
                 let pong = S2CPong {
                     payload: ping.payload,
@@ -254,46 +232,26 @@ impl Connection {
         }
     }
 
-    ///jank as. fix.
+    ///jank as. fix later.
     pub async fn write_packet(&mut self, packet: impl Packet) -> anyhow::Result<()> {
-        // let start_len = self.queue.len();
-        // let mut buf = Cursor::new(&mut self.queue[..]);
 
         packet.encode(&mut self.queue)?;
 
-        // let mut buf = [0u8; 5];
-        // let mut length_bytes = Cursor::new(&mut buf[..]);
-
-        // error!("{}", self.queue.len());
-        // error!("{:?}", &self.queue);
         let packet_len = self.queue.len();
         VarInt(packet_len as i32).encode(&mut self.staging)?;
 
         self.staging.extend_from_slice(&self.queue);
 
-        trace!("Writing packet to tcp stream.");
+        trace!("writing packet to tcp stream.");
         self.stream.write_all(&self.staging).await?;
 
         self.stream.flush().await?;
 
         self.queue.clear();
 
-        trace!("(↑) Packet sent: {packet:?}");
+        trace!("(↑) packet sent: {packet:?}");
 
         self.staging.clear();
-
-        // let position = length_bytes.position() as usize;
-
-        // self.staging.extend_from_slice(&buf[..position]);
-        // self.staging.extend_from_slice(&self.queue);
-
-        // // let data_len = self.queue.len() - start_len;
-
-        // self.stream.write_all(&self.staging).await?;
-        // self.stream.flush().await?;
-        // self.queue.clear();
-
-        // packet.encode(&mut self.buffer)
 
         Ok(())
     }
