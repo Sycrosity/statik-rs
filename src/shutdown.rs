@@ -36,15 +36,14 @@ impl Shutdown {
     }
 
     /// Receive the shutdown notice, waiting if necessary.
-    pub(crate) async fn recv(&mut self) -> anyhow::Result<String> {
+    pub(crate) async fn recv(&mut self) -> String {
         // Cannot receive a "lag error" as only one value is ever sent.
-        // let reason = self.recv.recv().await?;
-        let reason = self.recv.recv().await?;
+        let Ok(reason) = self.recv.recv().await else { unreachable!("theoretically this is unreachable.") };
 
         // Remember that the signal has been received.
         self.is_shutdown = true;
 
-        Ok(reason)
+        reason
     }
 }
 

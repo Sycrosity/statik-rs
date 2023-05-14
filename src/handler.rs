@@ -1,7 +1,6 @@
-use std::sync::Arc;
+use std::{io, sync::Arc};
 
-use anyhow::Result;
-use tokio::sync::{mpsc, RwLock};
+use tokio::{sync::{mpsc, RwLock}, io::AsyncReadExt};
 
 use crate::{config::ServerConfig, connection::Connection, player::Player, shutdown::Shutdown};
 
@@ -71,21 +70,38 @@ impl Handler {
     //         peer_addr = %self.connection.address
     //     ),
     // )]
-    pub async fn run(&mut self) -> Result<()> {
+    pub async fn run(&mut self) -> anyhow::Result<()> {
+
+        // self.connection.stream.read_buf(&mut self.connection.buffer).await?;
+        
         // As long as the shutdown signal has not been received, try to read a
         // new packet.
         while !self.shutdown.is_shutdown() {
             // While reading a packet, also listen for the shutdown
             // signal - otherwise on a long job this could hang!
-            let maybe_packet = tokio::select! {
-                res = {self.connection.read_packet()} => res?,
+            tokio::select! {
+                res = self.connection.handle_connection() => {
+
+                    if let Err(e) = res {
+                        // EOF can happen if the client disconnects while joining, which isn't
+                        // very erroneous.
+                        if let Some(er) = e.downcast_ref::<io::Error>() {
+                            if er.kind() == io::ErrorKind::UnexpectedEof {
+                                return Err(anyhow::anyhow!("connection ended due to clientside timeout"));
+                            }
+                        }
+                        return Err(anyhow::anyhow!("connection ended with error: {e:#}"));
+                    }
+
+                    info!("connection with {} ended.", self.connection.address);
+                },
                 // If a shutdown signal is received, return from `run`.
                 // This will result in the task terminating.
                 reason = self.shutdown.recv() => {
 
-                    let template = reason?;
+                    let template = reason;
 
-                    let context = Context::from_serialize(self.player.clone().unwrap_or_default())?;
+                    let context = if let Ok(context) = Context::from_serialize(self.player.clone().unwrap_or_default()) { context } else { Context::new() };
 
                     let disconnect_msg = match Tera::one_off(&template, &context, false) {
                         Ok(s) => s,
@@ -95,23 +111,22 @@ impl Handler {
                         }
                     };
 
-                    debug!("Client connection from {} disconnected with reason: \"{disconnect_msg}\"", &self.connection.address);
+                    debug!("Client connection from {} disconnected by server with reason: \"{disconnect_msg}\"", &self.connection.address);
 
                     //write disconnect packet using disconnect_msg:
                     // self.connection.write_packet().await?;
 
-                    return Ok(());
+                    // return Ok(());
                 }
             };
 
-            //If `None` is returned from `read_packet()` then the peer closed
-            //the socket. There is no further work to do and the task can be
-            //terminated.
-            let packet = match maybe_packet {
-                Some(packet) => packet,
-                None => return Ok(()),
-            };
-            trace!("(↓) Packet recieved: {packet:?}");
+            // //If `None` is returned from `read_packet()` then the peer closed
+            // //the socket. There is no further work to do and the task can be
+            // //terminated.
+            // let packet = match maybe_packet {
+            //     Some(packet) => packet,
+            //     None => return Ok(()),
+            // };
         }
 
         Ok(())

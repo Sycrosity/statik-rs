@@ -81,14 +81,14 @@ pub struct StatusResponse {
 
 impl StatusResponse {
     pub fn new(
-        version: Version,
+        // version: Version,
         players: Players,
         description: Chat,
         favicon: Option<&[u8]>,
         enforces_secure_chat: bool,
     ) -> Self {
         Self {
-            version,
+            version: Version::default(),
             players,
             description,
             favicon: favicon
@@ -125,6 +125,15 @@ pub struct Version {
     protocol: usize,
 }
 
+impl Default for Version {
+    fn default() -> Self {
+        Self {
+            name: Cow::Borrowed(MINECRAFT_VERSION),
+            protocol: PROTOCOL_VERSION,
+        }
+    }
+}
+
 impl Version {
     pub fn new<S: Into<Cow<'static, str>>>(name: S, protocol: usize) -> Self {
         Self {
@@ -151,13 +160,13 @@ impl Version {
 /// ```
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Players {
-    max: isize,
-    online: isize,
+    max: i32,
+    online: i32,
     sample: Vec<PlayerSample>,
 }
 
 impl Players {
-    pub fn new(max: isize, online: isize, sample: Vec<PlayerSample>) -> Self {
+    pub fn new(max: i32, online: i32, sample: Vec<PlayerSample>) -> Self {
         Self {
             max,
             online,

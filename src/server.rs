@@ -94,9 +94,11 @@ impl Server {
 
                             tokio::spawn(async move {
 
-                                Handler::new(config, Connection::new(config2, stream, address).await, shutdown, shutdown_complete_tx).await.run().await
+                                if let Err(err) = Handler::new(config, Connection::new(config2, stream, address).await, shutdown, shutdown_complete_tx).await.run().await {
+                                    error!("Connection error: {err:#}");
+                                }
 
-                            }).await??;
+                            });
                         },
                         Err(err) => error!("Failed to accept mc connection: {:#}", anyhow::anyhow!(err)),
                     }
