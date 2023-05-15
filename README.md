@@ -17,18 +17,23 @@ To run the server on default port 25565, run this command:
 $ cargo run --release
 ```
 
-While for development just run:
+While in development just run:
 
 ```bash
 $ cargo run
 ```
 (This will compile the projects dependencies with release mode, but have the actual binary compiled with the default dev profile and debug assertions)
 
+various settings can be configured through the `statik.toml` file - this can be provided in whatever directory the run command was executed in, or will be automatically generated if it doesn't yet exist.
 
-(UNIMPLIMENTED FEATURE)
-Or change one of the various settings (also availible through the `statik.toml` file):
+Or change the default `statik.toml` config file:
 ```bash
-$ cargo run --release -- -p 25566 -m "The server is turning on: please wait ~30 seconds!"
+$ cargo run -- --config=my_config_file.toml
+```
+
+And when everything is finalised, run the server in release mode:
+```bash
+$ cargo run --release
 ```
 
 -------
