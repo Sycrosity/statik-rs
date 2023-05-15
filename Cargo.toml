@@ -10,7 +10,7 @@ repository = "https://github.com/Sycrosity/statik-rs/"
 keywords = ["minecraft", "minecraft-server", "statik"]
 
 [workspace]
-members = [ "crates/*", "tools/*" ]
+members = [ "crates/*" ]
 resolver = "2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

@@ -1,44 +1,81 @@
 #![allow(dead_code)]
 
-use config::ServerConfig;
+mod quit;
 
+use statik_common::prelude::*;
+use statik_server::{config::ServerConfig, server::Server};
+
+use anyhow::anyhow;
 use tokio::{
     select,
     sync::{broadcast, mpsc},
 };
 
-use anyhow::anyhow;
+use clap::Parser;
+use std::path::PathBuf;
 
-use log::{debug, error, info};
-
-mod config;
-mod connection;
-mod handler;
-mod player;
-mod server;
-mod shutdown;
-
-use crate::server::Server;
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    /// Sets a custom config file
+    #[arg(short, long, value_name = "FILE")]
+    config: Option<PathBuf>,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let config = ServerConfig {
-        host: String::from("127.0.0.1"),
-        max_players: 64,
-        disconnect_msg: String::from("{{ username }}, the server closed."),
-        ..Default::default()
+    let cli = Cli::parse();
+
+    let config_path = cli.config.unwrap_or("statik.toml".into());
+
+    let config = match tokio::fs::read_to_string(&config_path).await {
+        Ok(s) => {
+            match toml::from_str::<ServerConfig>(&s) {
+                Ok(res) => res,
+                Err(e) => {
+                    println!("Incorrectly formatted statik config file: \"{}\", using default values: {e}", &config_path.display());
+                    ServerConfig::default()
+                }
+            }
+        }
+        Err(e) => {
+            if config_path == PathBuf::from("statik.toml") {
+                //this shouldn't be able to error, as ServerConfig can be serialised.
+                tokio::fs::write(
+                    PathBuf::from("statik.toml"),
+                    toml::to_string_pretty(&ServerConfig::default()).unwrap(),
+                )
+                .await
+                .unwrap();
+                println!("Created statik.toml as it could not be found.");
+            } else {
+                println!(
+                    "Could not read statik config file: \"{}\", using default values: {e}",
+                    &config_path.display()
+                );
+            }
+
+            ServerConfig::default()
+        }
     };
 
+    let config_filter = match config.general.log_level.parse::<tracing::Level>() {
+        Ok(res) => res,
+        Err(e) => {
+            println!("Incorrect value provided for log level: {e}. Using default DEBUG level.");
+            tracing::Level::DEBUG
+        }
+    };
+
+    //make this dynamic in the future!
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::TRACE)
+        .with_max_level(config_filter)
         .with_line_number(true)
         // .with_file(true)
         // .with_thread_names(true)
         .init();
 
     info!("Statik server is starting.");
-
-    let address = format!("{}:{}", &config.host, &config.port);
 
     // When the provided `shutdown` future completes, we must send a shutdown
     // message to all active connections. We use a broadcast channel for this
@@ -50,38 +87,32 @@ async fn main() -> anyhow::Result<()> {
 
     let mut server = Server::new(config, notify_shutdown, shutdown_complete_tx).await?;
 
-    info!("Statik server is up! Broadcasting on {address}.");
-
     loop {
         select! {
 
             res = server.run() => {
 
-                // If an error is received here, accepting connections from the TCP
-                // listener failed multiple times and the server is giving up and
-                // shutting down.
-                //
-                // Errors encountered when handling individual connections do not
+                // Errors encountered when handling individual connections should not
                 // bubble up to this point.
                 if let Err(err) = res {
                     error!("Failed to accept connection: {:#}", anyhow!(err));
                 }
             }
 
-            _ = shutdown::ctrl_c() => {
+            _ = quit::ctrl_c() => {
 
                 debug!("SIGINT (ctrl_c) OS signal recieved.");
                 server.shutdown(None).await?;
                 break;
 
             },
-            _ = shutdown::sigquit() => {
+            _ = quit::sigquit() => {
 
                 debug!("SIGQUIT (quit) OS signal recieved.");
                 server.shutdown(None).await?;
                 break;
             },
-            _ = shutdown::sigterm() => {
+            _ = quit::sigterm() => {
 
                 debug!("SIGTERM (terminate) OS signal recieved.");
                 server.shutdown(None).await?;
