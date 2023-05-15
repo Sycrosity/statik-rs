@@ -92,7 +92,8 @@ impl std::fmt::Debug for StatusResponse {
                     None => &None::<String>,
                 },
             )
-            .field("enforces_secure_chat", &self.enforces_secure_chat).finish()
+            .field("enforces_secure_chat", &self.enforces_secure_chat)
+            .finish()
     }
 }
 
