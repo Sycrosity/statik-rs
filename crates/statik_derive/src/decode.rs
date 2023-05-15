@@ -19,7 +19,7 @@ pub fn expand_derive_decode(input: &mut DeriveInput) -> Result<TokenStream> {
                         let name = f.ident.as_ref().unwrap();
                         let ctx = format!("failed to decode field `{name}` in `{ident}`");
                         quote! {
-                            #name: ::statik_common::prelude::Decode::decode(_buffer).context(#ctx)?,
+                            #name: ::statik_common::prelude::Decode::decode(&mut _buffer).context(#ctx)?,
                         }
                     });
 
