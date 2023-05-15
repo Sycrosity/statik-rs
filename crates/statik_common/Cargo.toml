@@ -2,6 +2,11 @@
 name = "statik_common"
 version = "0.2.0"
 edition = "2021"
+description = "Common traits, structs, constants and imports used by the 'statik' minecraft fallback server."
+license = "MIT OR Apache-2.0"
+homepage = "https://sycrosity.github.io/statik-rs/"
+repository = "https://github.com/Sycrosity/statik-rs/"
+keywords = ["minecraft", "minecraft-server", "statik"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

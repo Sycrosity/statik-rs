@@ -2,7 +2,11 @@
 name = "statik_proto"
 version = "0.2.0"
 edition = "2021"
-description = "Associated minecraft protocols and packets for the statik minecraft limbo server."
+description = "Associated minecraft protocols and packets used by the 'statik' minecraft fallback server."
+license = "MIT OR Apache-2.0"
+homepage = "https://sycrosity.github.io/statik-rs/"
+repository = "https://github.com/Sycrosity/statik-rs/"
+keywords = ["minecraft", "minecraft-server", "statik"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

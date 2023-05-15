@@ -3,8 +3,8 @@
 name = "statik"
 version = "0.2.0"
 edition = "2021"
-license = "MIT OR Apache-2.0"
 description = "A pure rust lightweight 'fallback' minecraft server."
+license = "MIT OR Apache-2.0"
 homepage = "https://sycrosity.github.io/statik-rs/"
 repository = "https://github.com/Sycrosity/statik-rs/"
 keywords = ["minecraft", "minecraft-server", "statik"]
