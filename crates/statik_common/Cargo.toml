@@ -1,6 +1,6 @@
 [package]
 name = "statik_common"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "Common traits, structs, constants and imports used by the 'statik' minecraft fallback server."
 license = "MIT OR Apache-2.0"
