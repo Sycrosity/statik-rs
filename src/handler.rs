@@ -14,11 +14,6 @@ use tera::{Context, Tera};
 pub struct Handler {
     config: Arc<RwLock<ServerConfig>>,
 
-    /// All the data accociated with the client after they have connected, including
-    /// their username, UUID, (in the future) items, ect. Defaults to None, as this data
-    /// isn't sent with a status request, only on login.
-    player: Option<Player>,
-
     /// The TCP connection implemented using a buffered `TcpStream` for parsing
     /// minecraft packets.
     ///
@@ -55,7 +50,7 @@ impl Handler {
         let _config_clone = config.clone();
         Self {
             config,
-            player: None,
+            // player: None,
             connection,
             shutdown,
             _shutdown_complete,
@@ -101,7 +96,7 @@ impl Handler {
 
                     let template = reason;
 
-                    let context = if let Ok(context) = Context::from_serialize(self.player.clone().unwrap_or_default()) { context } else { Context::new() };
+                    let context = if let Ok(context) = Context::from_serialize(/*self.player.clone().unwrap_or_default()*/ Player::default()) { context } else { Context::new() };
 
                     let disconnect_msg = match Tera::one_off(&template, &context, false) {
                         Ok(s) => s,
@@ -114,6 +109,9 @@ impl Handler {
                     debug!("Client connection from {} disconnected by server with reason: \"{disconnect_msg}\"", &self.connection.address);
 
                     //write disconnect packet using disconnect_msg:
+
+                    // let disconnect_packet = S2C
+
                     // self.connection.write_packet().await?;
 
                     // return Ok(());

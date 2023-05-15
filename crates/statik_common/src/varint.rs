@@ -56,19 +56,49 @@ impl Encode for VarInt {
 }
 
 impl From<i32> for VarInt {
-    fn from(i: i32) -> Self {
-        VarInt(i)
+    fn from(value: i32) -> Self {
+        VarInt(value)
+    }
+}
+
+impl From<u32> for VarInt {
+    fn from(value: u32) -> Self {
+        VarInt(value as i32)
+    }
+}
+
+impl From<usize> for VarInt {
+    fn from(value: usize) -> Self {
+        VarInt(value as i32)
+    }
+}
+
+impl From<isize> for VarInt {
+    fn from(value: isize) -> Self {
+        VarInt(value as i32)
     }
 }
 
 impl From<VarInt> for i32 {
-    fn from(i: VarInt) -> Self {
-        i.0
+    fn from(value: VarInt) -> Self {
+        value.0
+    }
+}
+
+impl From<VarInt> for u32 {
+    fn from(value: VarInt) -> Self {
+        value.0 as u32
     }
 }
 
 impl From<VarInt> for usize {
-    fn from(i: VarInt) -> Self {
-        i.0 as usize
+    fn from(value: VarInt) -> Self {
+        value.0 as usize
+    }
+}
+
+impl From<VarInt> for isize {
+    fn from(value: VarInt) -> Self {
+        value.0 as isize
     }
 }

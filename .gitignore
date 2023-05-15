@@ -4,3 +4,4 @@ flamegraph*.svg
 .vscode
 .DS_Store
 *.excalidraw
+/helpers

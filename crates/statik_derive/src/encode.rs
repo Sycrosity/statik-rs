@@ -21,7 +21,7 @@ pub fn expand_derive_encode(input: &mut DeriveInput) -> Result<TokenStream> {
                         let name = &f.ident.as_ref().unwrap();
                         let ctx = format!("failed to encode field `{name}` in `{ident}`");
                         quote! {
-                            self.#name.encode(_buffer).context(#ctx)?;
+                            self.#name.encode(&mut _buffer).context(#ctx)?;
                         }
                     })
                     .collect(),

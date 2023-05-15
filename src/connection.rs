@@ -9,10 +9,13 @@ use bytes::{Buf, BytesMut};
 use statik_common::prelude::*;
 
 use statik_proto::{
-    c2s::{handshaking::C2SHandshakingPacket, status::C2SStatusPacket},
-    s2c::status::{
-        pong::S2CPong,
-        response::{Players, S2CStatusResponse, StatusResponse},
+    c2s::{handshaking::C2SHandshakingPacket, login::C2SLoginPacket, status::C2SStatusPacket},
+    s2c::{
+        login::disconnect::S2CDisconnect,
+        status::{
+            pong::S2CPong,
+            response::{Players, S2CStatusResponse, StatusResponse},
+        },
     },
     state::State,
 };
@@ -53,6 +56,11 @@ fn is_valid_username(username: &str) -> bool {
 pub struct Connection {
     config: Arc<RwLock<ServerConfig>>,
 
+    // /// All the data accociated with the client after they have connected, including
+    // /// their username, UUID, (in the future) items, ect. Defaults to None, as this data
+    // /// isn't sent with a status request, only on login.
+    // pub player: Option<Player>,
+
     // The `TcpStream`. It is decorated with a `BufWriter`, which provides write
     // level buffering. The `BufWriter` implementation provided by Tokio is
     // sufficient for our needs.
@@ -87,6 +95,7 @@ impl Connection {
 
         Self {
             config,
+            // player: None,
             stream: BufWriter::new(socket),
             address,
             buffer: BytesMut::with_capacity(max_packet_size),
@@ -160,11 +169,13 @@ impl Connection {
                 self.handle_handshake(C2SHandshakingPacket::decode(&mut buf)?)
                     .await?
             }
+
             State::Status => {
                 self.handle_status(C2SStatusPacket::decode(&mut buf)?)
                     .await?
             }
-            State::Login => unimplemented!(),
+
+            State::Login => self.handle_login(C2SLoginPacket::decode(&mut buf)?).await?,
             State::Play => unimplemented!(),
         }
 
@@ -200,7 +211,7 @@ impl Connection {
                     json_response: StatusResponse::new(
                         Players::new(config.max_players, 0, vec![]),
                         Chat::new(config.motd.clone()),
-                        None,
+                        Some(include_bytes!("../assets/icon.png")),
                         false,
                     ),
                 };
@@ -220,6 +231,29 @@ impl Connection {
 
                 Ok(())
             }
+        }
+    }
+
+    pub async fn handle_login(&mut self, packet: C2SLoginPacket) -> anyhow::Result<()> {
+        trace!("(↓) packet recieved: {:?}", &packet);
+        match packet {
+            C2SLoginPacket::LoginStart(login_start) => {
+                //later use tera templating?
+                let disconnect = S2CDisconnect {
+                    reason: Chat::new(
+                        /*self.config.read().await.disconnect_msg.clone()*/
+                        format!(
+                            "{}, the server is now starting. It will be up in around 30s-1m!",
+                            login_start.username
+                        ),
+                    ),
+                };
+
+                self.write_packet(disconnect).await?;
+
+                Ok(())
+            }
+            _ => unimplemented!(),
         }
     }
 
