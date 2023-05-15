@@ -5,3 +5,5 @@ flamegraph*.svg
 .DS_Store
 *.excalidraw
 /helpers
+statik.toml
+/assets
