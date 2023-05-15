@@ -1,5 +1,4 @@
 pub mod chat;
-pub mod error;
 pub mod impls;
 pub mod packet;
 pub mod raw;
@@ -8,7 +7,6 @@ pub mod varint;
 pub mod prelude {
 
     pub use crate::chat::*;
-    pub use crate::error::*;
     pub use crate::impls::*;
     pub use crate::packet::*;
     pub use crate::raw::*;
@@ -17,6 +15,7 @@ pub mod prelude {
     pub use crate::MINECRAFT_VERSION;
     pub use crate::PROTOCOL_VERSION;
 
+    pub use anyhow::{anyhow, bail};
     pub use log::{debug, error, info, log, trace, warn};
 }
 
