@@ -9,8 +9,9 @@ use encryption_request::*;
 use login_plugin_request::*;
 use login_success::*;
 use set_compression::*;
+use statik_derive::PacketGroup;
 
-#[derive(Debug)]
+#[derive(Debug, PacketGroup)]
 pub enum S2CLoginPacket {
     Disconnect(S2CDisconnect),
     EncryptionRequest(S2CEncryptionRequest),

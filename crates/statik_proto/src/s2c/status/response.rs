@@ -41,7 +41,7 @@ pub struct S2CStatusResponse {
 /// "enforcesSecureChat": true
 /// }
 /// ```
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StatusResponse {
     // {
@@ -77,6 +77,23 @@ pub struct StatusResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     favicon: Option<String>,
     enforces_secure_chat: bool,
+}
+
+impl std::fmt::Debug for StatusResponse {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        std::fmt::Formatter::debug_struct(f, "StatusResponse")
+            .field("version", &self.version)
+            .field("players", &self.players)
+            .field("description", &self.description)
+            .field(
+                "favicon",
+                match &self.favicon {
+                    Some(_) => &"#HIDDEN: ICON AS BASE64 STRING#",
+                    None => &None::<String>,
+                },
+            )
+            .field("enforces_secure_chat", &self.enforces_secure_chat).finish()
+    }
 }
 
 impl StatusResponse {
