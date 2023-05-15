@@ -1,19 +1,20 @@
 [package]
 name = "statik_proto"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+description = "Associated minecraft protocols and packets for the statik minecraft limbo server."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-thiserror = "1.0.40"
-byteorder = "1.4.3"
-serde_json = "1.0.96"
-serde = { version = "1.0.160", features = ["derive"] }
-base64 = "0.21.0"
-uuid = { version = "1.3.2", features = ["serde"] }
-anyhow = "1.0.71"
-rand = "0.8.5"
+thiserror = { workspace = true }
+byteorder = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true }
+# base64 = { workspace = true }
+uuid = { workspace = true }
+anyhow = { workspace = true }
+rand = { workspace = true }
 
-statik_derive = { path = "../statik_derive" }
-statik_common = { path = "../statik_common" }
+statik_derive = { workspace = true }
+statik_common = { workspace = true }
