@@ -7,14 +7,11 @@ description = "Associated minecraft protocols and packets for the statik minecra
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-thiserror = { workspace = true }
 byteorder = { workspace = true }
 serde_json = { workspace = true }
 serde = { workspace = true }
-# base64 = { workspace = true }
 uuid = { workspace = true }
 anyhow = { workspace = true }
-rand = { workspace = true }
 
 statik_derive = { workspace = true }
 statik_common = { workspace = true }
