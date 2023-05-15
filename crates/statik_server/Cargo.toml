@@ -14,7 +14,7 @@ keywords = ["minecraft", "minecraft-server", "statik"]
 #sending http requests
 reqwest = "0.11.17"
 #templating
-tera = { workspace = true }
+# tera = { workspace = true }
 tokio = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }

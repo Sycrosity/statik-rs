@@ -51,8 +51,8 @@ thiserror = "1.0.40"
 tokio = { version = "1.28.1", features = ["full"] }
 #sending http requests
 reqwest = "0.11.17"
-#templating
-tera = "1.18.1"
+#templating - see TODO.md
+# tera = { version = "1.18.1", default-features = false }
 #tracing
 tracing = "0.1.37"
 

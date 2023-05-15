@@ -2,11 +2,13 @@ use std::{io, sync::Arc};
 
 use tokio::sync::{mpsc, RwLock};
 
-use crate::{config::ServerConfig, connection::Connection, player::Player, shutdown::Shutdown};
+use crate::{
+    config::ServerConfig, connection::Connection, /*player::Player, */ shutdown::Shutdown,
+};
 
 use statik_common::prelude::*;
 
-use tera::{Context, Tera};
+// use tera::{Context, Tera};
 
 /// Per-connection handler. Reads packets sent from `connection` (a tcp stream from a
 /// minecraft client) and sends responses accordingly.
@@ -94,19 +96,20 @@ impl Handler {
                 // This will result in the task terminating.
                 reason = self.shutdown.recv() => {
 
-                    let template = reason;
+                    // let template = reason;
 
-                    let context = if let Ok(context) = Context::from_serialize(/*self.player.clone().unwrap_or_default()*/ Player::default()) { context } else { Context::new() };
+                    // let context = if let Ok(context) = Context::from_serialize(/*self.player.clone().unwrap_or_default()*/ Player::default()) { context } else { Context::new() };
 
-                    let disconnect_msg = match Tera::one_off(&template, &context, false) {
-                        Ok(s) => s,
-                        Err(e) => {
-                            warn!("Sending disconnect template as plain text. Could not parse Tera template: {e}");
-                            template
-                        }
-                    };
+                    // let disconnect_msg = match Tera::one_off(&template, &context, false) {
+                    //     Ok(s) => s,
+                    //     Err(e) => {
+                    //         warn!("Sending disconnect template as plain text. Could not parse Tera template: {e}");
+                    //         template
+                    //     }
+                    // };
 
-                    debug!("Client connection from {} disconnected by server with reason: \"{disconnect_msg}\"", &self.connection.address);
+                    // debug!("Client connection from {} disconnected by server with reason: \"{disconnect_msg}\"", &self.connection.address);
+                    debug!("Client connection from {} disconnected by server with reason: \"{reason}\"", &self.connection.address);
 
                     //write disconnect packet using disconnect_msg:
 
