@@ -33,7 +33,7 @@ impl Decode for VarInt {
             pos += 7;
 
             if pos >= 32 {
-                return Err(DecodeError::VarIntTooLarge.into());
+                return Err(anyhow!("Cannot decode VarInt! Exceeds maximum capacity of 5 bytes (2147483647/-2147483648)."));
             }
         }
     }

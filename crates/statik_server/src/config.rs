@@ -1,12 +1,35 @@
-#[derive(Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Default, Debug, Serialize, Deserialize)]
+#[serde(default)]
+
 pub struct ServerConfig {
+    pub general: GeneralServerConfig,
+    pub mc: McServerConfig,
+    pub api: ApiServerConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GeneralServerConfig {
     /// Defaults to "0.0.0.0" which accepts all incoming connections.
     pub host: String,
+    pub log_level: String,
+}
+
+impl Default for GeneralServerConfig {
+    fn default() -> Self {
+        Self {
+            host: "0.0.0.0".to_string(),
+            log_level: "debug".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct McServerConfig {
     /// The port minecraft clients connect to. Defaults to 25565.
     pub port: u16,
-
-    /// The port api connections use. Defaults to 8080.
-    pub api_port: usize,
 
     /// How many players can join the server at once. Defaults to 20.
     ///
@@ -42,6 +65,9 @@ pub struct ServerConfig {
     pub icon: Option<String>,
 
     /// Whether this server appears online or not. Defaults to false.
+    ///
+    /// Note: this would pretty much make the statik server worthless!
+    /// Make sure you are certain this is what you want to enable.
     pub hidden: bool,
 
     /// What message should be sent to the client by default when disconnecting them.
@@ -49,26 +75,37 @@ pub struct ServerConfig {
     ///
     /// Note: this can be overridden by disconnect specific packets, this is merely
     /// the default, no reason given fallback message.
-    /// Note: may use templating from [Tera](https://tera.netlify.app/), a templating
+    /// Note: can be templated using [Tera](https://tera.netlify.app/), a templating
     /// library inspired by Jinja2 and Django - read their [Documentation](https://tera.netlify.app/docs/)
     /// and [Examples](https://github.com/Keats/tera/tree/master/examples) for possible
     /// templates.
     pub disconnect_msg: String,
 }
 
-impl Default for ServerConfig {
+impl Default for McServerConfig {
     fn default() -> Self {
         Self {
             max_packet_size: 4096,
-            host: String::from("0.0.0.0"),
             port: 25565,
-            api_port: 8080,
             max_players: 20,
             hide_player_count: false,
-            motd: String::from("A Statik server!"),
+            motd: "A Statik server!".to_string(),
             icon: None,
             hidden: false,
-            disconnect_msg: String::from("Disconnected from the server."),
+            disconnect_msg: "Disconnected from the server.".to_string(),
         }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ApiServerConfig {
+    /// The port api connections use. Defaults to 8080.
+    pub port: usize,
+}
+
+impl Default for ApiServerConfig {
+    fn default() -> Self {
+        Self { port: 8080 }
     }
 }

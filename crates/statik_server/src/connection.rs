@@ -25,7 +25,7 @@ use tokio::{
     sync::RwLock,
 };
 
-use crate::ServerConfig;
+use crate::config::ServerConfig;
 
 /// Checks if a username COULD be a valid minecraft account's username.
 ///
@@ -91,7 +91,7 @@ impl Connection {
         socket: TcpStream,
         address: SocketAddr,
     ) -> Self {
-        let max_packet_size = config.read().await.max_packet_size;
+        let max_packet_size = config.read().await.mc.max_packet_size;
 
         Self {
             config,
@@ -209,9 +209,9 @@ impl Connection {
 
                 let status_response = S2CStatusResponse {
                     json_response: StatusResponse::new(
-                        Players::new(config.max_players, 0, vec![]),
-                        Chat::new(config.motd.clone()),
-                        Some(include_bytes!("../assets/icon.png")),
+                        Players::new(config.mc.max_players, 0, vec![]),
+                        Chat::new(config.mc.motd.clone()),
+                        config.mc.icon.clone(),
                         false,
                     ),
                 };
@@ -241,7 +241,7 @@ impl Connection {
                 //later use tera templating?
                 let disconnect = S2CDisconnect {
                     reason: Chat::new(
-                        /*self.config.read().await.disconnect_msg.clone()*/
+                        /*self.config.read().await.mc.disconnect_msg.clone()*/
                         format!(
                             "{}, the server is now starting. It will be up in around 30s-1m!",
                             login_start.username

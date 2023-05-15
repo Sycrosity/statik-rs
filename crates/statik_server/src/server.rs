@@ -7,6 +7,8 @@ use tokio::{
     sync::{broadcast, mpsc, RwLock},
 };
 
+use base64::prelude::{Engine as _, BASE64_STANDARD};
+
 use crate::{config::ServerConfig, connection::Connection, handler::Handler, shutdown::Shutdown};
 
 pub struct Server {
@@ -14,12 +16,12 @@ pub struct Server {
     pub config: Arc<RwLock<ServerConfig>>,
 
     /// Minecraft TCP listener that the server will bind and accept minecraft
-    /// client connections from. Set by the `config.host` and `config.port`
+    /// client connections from. Set by the `config.general.host` and `config.mc.port`
     /// fields.
     pub mc_listener: TcpListener,
 
     /// API TCP listener that the server will bind and accept api connections
-    /// from. Set by the `config.host` and `config.api_port` fields.
+    /// from. Set by the `config.general.host` and `config.api.port` fields.
     pub api_listener: TcpListener,
 
     /// Able to broadcast a shutdown signal to all active connections.
@@ -50,22 +52,31 @@ pub struct Server {
 
 impl Server {
     pub async fn new(
-        config: ServerConfig,
+        mut config: ServerConfig,
         notify_shutdown: broadcast::Sender<String>,
         shutdown_complete_tx: mpsc::Sender<String>,
     ) -> anyhow::Result<Self> {
-        let mc_address = format!("{}:{}", config.host, config.port);
-        let api_address = format!("{}:{}", config.host, config.api_port);
+        let mc_address = format!("{}:{}", config.general.host, config.mc.port);
+        let api_address = format!("{}:{}", config.general.host, config.api.port);
 
-        let mc_listener = TcpListener::bind(mc_address).await?;
-        let api_listener = TcpListener::bind(api_address).await?;
+        let mc_listener = TcpListener::bind(&mc_address).await?;
+        let api_listener = TcpListener::bind(&api_address).await?;
 
-        let _icon = match &config.icon {
-            Some(s) => Some(tokio::fs::read(s).await?),
-            None => None,
+        config.mc.icon = if let Some(s) = config.mc.icon {
+            match tokio::fs::read(&s).await {
+                Ok(s) => Some(BASE64_STANDARD.encode(s)),
+                Err(e) => {
+                    warn!("could not read icon file \"{s}\", defaulting to no icon: {e}");
+                    None
+                }
+            }
+        } else {
+            None
         };
 
         let config = Arc::new(RwLock::new(config));
+
+        info!("Statik server is up! Broadcasting the mc server on {mc_address}, and the api server on {api_address}.");
 
         Ok(Self {
             config,
@@ -140,7 +151,7 @@ impl Server {
 
         let template = match reason {
             Some(template) => template,
-            None => self.config.read().await.disconnect_msg.clone(),
+            None => self.config.read().await.mc.disconnect_msg.clone(),
         };
 
         debug!("sending shutdown notice to connected clients, using disconnect message template: \"{template}\"");

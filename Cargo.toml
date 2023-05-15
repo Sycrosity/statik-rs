@@ -1,6 +1,7 @@
+
 [package]
 name = "statik"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "A pure rust lightweight 'fallback' minecraft server."
@@ -10,19 +11,30 @@ keywords = ["minecraft", "minecraft-server", "statik"]
 
 [workspace]
 members = [ "crates/*" ]
-exclude = [ "helpers/*" ]
 resolver = "2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-#asynchronous runtime
-tokio = { version = "1.28.0", features = ["full"] }
+
+tracing-subscriber = "0.3.17"
+#CLI parsing#
+clap = { version ="4.2.7", features = ["derive"] }
+toml = "0.7.3"
+
+tracing = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+
+statik_common = { workspace = true }
+statik_server = { workspace = true }
+
+[workspace.dependencies]
 #uuid encoding/decoding
 uuid = { version = "1.3.2", features = ["serde"] }
 #serialising/deserialising#
-serde = { version = "1.0.160", features = ["derive"] }
-serde_json = "1.0.96"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 #creating random values
 rand = "0.8.5"
 #base64 encoding/decoding
@@ -30,21 +42,24 @@ base64 = "0.21.0"
 #low level byte manipulation#
 byteorder = "1.4.3"
 bytes = { version = "1.4.0", features = ["serde"] }
+#logging
+log = "0.4.17"
+#error handling#
+anyhow = "1.0.71"
+thiserror = "1.0.40"
+#asynchronous runtime
+tokio = { version = "1.28.1", features = ["full"] }
 #sending http requests
 reqwest = "0.11.17"
 #templating
 tera = "1.18.1"
-#logging#
-log = "0.4.17"
-tracing = "0.1"
-tracing-subscriber = "0.3.17"
-#error handling#
-anyhow = "1.0.71"
-thiserror = "1.0.40"
+#tracing
+tracing = "0.1.37"
 
-statik_derive = { path = "crates/statik_derive" }
-statik_proto = { path = "crates/statik_proto" }
-statik_common = { path = "crates/statik_common" }
+statik_derive = { package = "statik_derive", path = "crates/statik_derive", version = "0.2.0" }
+statik_proto = { package = "statik_proto", path = "crates/statik_proto", version = "0.2.0" }
+statik_common = { package = "statik_common", path = "crates/statik_common", version = "0.2.0" }
+statik_server = { package = "statik_server", path = "crates/statik_server", version = "0.2.0" }
 
 [profile.dev.package."*"]
 opt-level = 3

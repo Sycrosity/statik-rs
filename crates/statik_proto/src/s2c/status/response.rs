@@ -4,8 +4,6 @@ use serde::{Deserialize, Serialize};
 use statik_common::prelude::*;
 use uuid::Uuid;
 
-use base64::prelude::{Engine as _, BASE64_STANDARD};
-
 use statik_derive::Packet;
 
 #[derive(Debug, Packet)]
@@ -102,15 +100,14 @@ impl StatusResponse {
         // version: Version,
         players: Players,
         description: Chat,
-        favicon: Option<&[u8]>,
+        favicon: Option<String>,
         enforces_secure_chat: bool,
     ) -> Self {
         Self {
             version: Version::default(),
             players,
             description,
-            favicon: favicon
-                .map(|data| format!("data:image/png;base64,{}", &BASE64_STANDARD.encode(data))),
+            favicon: favicon.map(|data| format!("data:image/png;base64,{data}")),
             enforces_secure_chat,
         }
     }
