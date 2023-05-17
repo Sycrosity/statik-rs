@@ -12,7 +12,7 @@ keywords = ["minecraft", "minecraft-server", "statik"]
 
 [dependencies]
 #sending http requests
-# reqwest = "0.11.17"
+reqwest = { workspace = true, features = ["rustls-tls", "json"]}
 #templating
 # tera = { workspace = true }
 tokio = { workspace = true }

@@ -26,14 +26,24 @@ $ cargo run
 
 various settings can be configured through the `statik.toml` file - this can be provided in whatever directory the run command was executed in, or will be automatically generated if it doesn't yet exist.
 
-Or change the default `statik.toml` config file:
+Or change the path of the config file:
 ```bash
-$ cargo run -- --config=my_config_file.toml
+$ cargo run -- --config=path/to/my_config_file.toml
 ```
 
 And when everything is finalised, run the server in release mode:
 ```bash
 $ cargo run --release
+```
+
+You can also install the server binary from <https://crates.io/crates/statik>:
+
+```bash
+$ cargo install statik --locked
+```
+Note: this may not be up to date, and installing from this repo's main branch may be better:
+```bash
+$ cargo install --git https://github.com/Sycrosity/statik-rs --locked
 ```
 
 -------

@@ -50,16 +50,16 @@ thiserror = "1.0.40"
 #asynchronous runtime
 tokio = { version = "1.28.1", features = ["full"] }
 #sending http requests
-reqwest = "0.11.17"
+reqwest = { version = "0.11.17", default-features = false }
 #templating - see TODO.md
 # tera = { version = "1.18.1", default-features = false }
 #tracing
 tracing = "0.1.37"
 
-statik_derive = { package = "statik_derive", path = "crates/statik_derive", version = "0.2.0" }
-statik_proto = { package = "statik_proto", path = "crates/statik_proto", version = "0.2.0" }
-statik_common = { package = "statik_common", path = "crates/statik_common", version = "0.2.0" }
-statik_server = { package = "statik_server", path = "crates/statik_server", version = "0.2.0" }
+statik_derive = { path = "crates/statik_derive", version = "0.2.1" }
+statik_proto = { path = "crates/statik_proto", version = "0.2.1" }
+statik_common = { path = "crates/statik_common", version = "0.2.1" }
+statik_server = { path = "crates/statik_server", version = "0.2.1" }
 
 [profile.dev.package."*"]
 opt-level = 3
