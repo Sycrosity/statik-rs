@@ -48,6 +48,13 @@ $ cargo install --git https://github.com/Sycrosity/statik-rs --locked
 
 -------
 
+## Contributing
+
+Any and all contributions are welcome! Pull requests are checked for `cargo test`, `cargo clippy` and `cargo +nightly fmt`. Note this project uses unstable cargo fmt settings, and requires installing and running cargo fmt on the nighlty edition.
+
+
+-------
+
 ## Credits
 
 This project takes **heavy** inspiration and couldn't be created without the hard work put into the following projects:

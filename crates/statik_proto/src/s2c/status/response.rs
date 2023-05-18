@@ -2,9 +2,8 @@ use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
 use statik_common::prelude::*;
-use uuid::Uuid;
-
 use statik_derive::Packet;
+use uuid::Uuid;
 
 #[derive(Debug, Packet)]
 #[packet_id = 0x00]
@@ -68,7 +67,8 @@ pub struct StatusResponse {
 
     players: Players,
 
-    ///doesn't need to be the same level as [Players] or [Version], as [Chat] already has the `text` field as the description field has.
+    ///doesn't need to be the same level as [Players] or [Version], as [Chat]
+    /// already has the `text` field as the description field has.
     description: Chat,
 
     ///byte slice of an image encoded as base64, prefixed by

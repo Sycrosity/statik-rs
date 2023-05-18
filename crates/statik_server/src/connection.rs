@@ -1,29 +1,20 @@
-use std::{
-    io::{self, Cursor, ErrorKind},
-    net::SocketAddr,
-    sync::Arc,
-};
+use std::io::{self, Cursor, ErrorKind};
+use std::net::SocketAddr;
+use std::sync::Arc;
 
 use anyhow::bail;
 use bytes::{Buf, BytesMut};
 use statik_common::prelude::*;
-
-use statik_proto::{
-    c2s::{handshaking::C2SHandshakingPacket, login::C2SLoginPacket, status::C2SStatusPacket},
-    s2c::{
-        login::disconnect::S2CDisconnect,
-        status::{
-            pong::S2CPong,
-            response::{Players, S2CStatusResponse, StatusResponse},
-        },
-    },
-    state::State,
-};
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt, BufWriter},
-    net::TcpStream,
-    sync::RwLock,
-};
+use statik_proto::c2s::handshaking::C2SHandshakingPacket;
+use statik_proto::c2s::login::C2SLoginPacket;
+use statik_proto::c2s::status::C2SStatusPacket;
+use statik_proto::s2c::login::disconnect::S2CDisconnect;
+use statik_proto::s2c::status::pong::S2CPong;
+use statik_proto::s2c::status::response::{Players, S2CStatusResponse, StatusResponse};
+use statik_proto::state::State;
+use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
+use tokio::net::TcpStream;
+use tokio::sync::RwLock;
 
 use crate::config::ServerConfig;
 
@@ -108,8 +99,8 @@ impl Connection {
     /// Read a single `Packet` value from the underlying stream.
     ///
     /// The function waits until it has retrieved enough data to parse a packet.
-    /// Any data remaining in the read buffer after the packet has been parsed is
-    /// kept there for the next call to `read_packet`.
+    /// Any data remaining in the read buffer after the packet has been parsed
+    /// is kept there for the next call to `read_packet`.
     ///
     /// # Returns
     ///
@@ -189,7 +180,12 @@ impl Connection {
         match packet {
             C2SHandshakingPacket::Handshake(handshake) => {
                 if handshake.protocol_version.0 as usize != PROTOCOL_VERSION {
-                    return Err(anyhow::anyhow!("Protocol versions do not match! Client had protocol version: {}, while the server's protocol version is {}.", handshake.protocol_version.0, PROTOCOL_VERSION));
+                    return Err(anyhow::anyhow!(
+                        "Protocol versions do not match! Client had protocol version: {}, while \
+                         the server's protocol version is {}.",
+                        handshake.protocol_version.0,
+                        PROTOCOL_VERSION
+                    ));
                 };
 
                 let next_state = handshake.next_state;
@@ -241,7 +237,7 @@ impl Connection {
                 //later use tera templating?
                 let disconnect = S2CDisconnect {
                     reason: Chat::new(
-                        /*self.config.read().await.mc.disconnect_msg.clone()*/
+                        /* self.config.read().await.mc.disconnect_msg.clone() */
                         format!(
                             "{}, the server is now starting. It will be up in around 30s-1m!",
                             login_start.username

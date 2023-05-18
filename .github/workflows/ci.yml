@@ -40,7 +40,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run:  ${{ env.PREREQS }}
+      - run: |
+          ${{ env.PREREQS }}
+          rustup component add --toolchain nightly rustfmt
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -49,7 +51,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --all -- --check
+          args: +nightly --all -- --check
 
   test:
     strategy:

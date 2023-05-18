@@ -5,6 +5,7 @@ use statik_derive::Packet;
 #[packet_id = 0x02]
 pub struct C2SLoginPluginResponse {
     pub message_id: VarInt,
-    pub successful: bool,
-    pub data: RawBytes,
+    // pub successful: bool,
+    ///
+    pub data: Option<RawBytes>,
 }

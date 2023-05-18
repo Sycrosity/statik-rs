@@ -1,7 +1,5 @@
-use std::{
-    borrow::Cow,
-    io::{Read, Write},
-};
+use std::borrow::Cow;
+use std::io::{Read, Write};
 
 use anyhow::{ensure, Context, Result};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -188,7 +186,10 @@ impl Decode for String {
         let mut buf = Vec::with_capacity(length as usize);
 
         for _ in 0..length {
-            buf.push(buffer.read_u8().context("Not enough data remaining to decode string: buffer length must be {length}, according to the starting VarInt")?);
+            buf.push(buffer.read_u8().context(
+                "Not enough data remaining to decode string: buffer length must be {length}, \
+                 according to the starting VarInt",
+            )?);
         }
 
         Ok(std::string::String::from_utf8(buf)?)
@@ -307,7 +308,8 @@ impl Decode for Uuid {
 
 //         // TODO: rewrite using std::array::try_from_fn when stabilized?
 //         // TODO: specialization for [f64; 3] improved performance.
-//         let mut data: [MaybeUninit<T>; N] = unsafe { MaybeUninit::uninit().assume_init() };
+//         let mut data: [MaybeUninit<T>; N] = unsafe {
+// MaybeUninit::uninit().assume_init() };
 
 //         for (i, elem) in data.iter_mut().enumerate() {
 //             match T::decode(&mut buffer) {
