@@ -49,10 +49,8 @@ jobs:
           profile: minimal
           toolchain: stable
           components: rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - name: run cargo fmt
+        run: cargo +nightly fmt --all -- --check
 
   test:
     strategy:
