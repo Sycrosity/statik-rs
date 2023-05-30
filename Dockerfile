@@ -1,3 +1,4 @@
+ARG TARGET_CC=musl-gcc
 FROM rust:latest as builder
 
 # RUN rustup default nightly
