@@ -1,8 +1,9 @@
-ARG TARGET_CC=musl-gcc
+# ARG TARGET_CC=musl-gcc
 FROM rust:latest as builder
 
 # RUN rustup default nightly
 RUN rustup target add x86_64-unknown-linux-musl
+RUN apt update && apt install -y musl-tools
 # RUN rustup install nightly
 WORKDIR /usr/src/statik
 COPY . .
