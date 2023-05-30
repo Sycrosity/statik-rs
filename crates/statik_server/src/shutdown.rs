@@ -11,7 +11,8 @@ use tokio::sync::broadcast;
 /// received or not.
 #[derive(Debug)]
 pub struct Shutdown {
-    /// `true` if the shutdown signal has been received - should be a one way change (you can't 'un-shutdown' a server).
+    /// `true` if the shutdown signal has been received - should be a one way
+    /// change (you can't 'un-shutdown' a server).
     is_shutdown: bool,
 
     /// The receive half of the channel used to listen for shutdown.

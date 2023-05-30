@@ -2,17 +2,15 @@
 
 mod quit;
 
-use statik_common::prelude::*;
-use statik_server::{config::ServerConfig, server::Server};
+use std::path::PathBuf;
 
 use anyhow::anyhow;
-use tokio::{
-    select,
-    sync::{broadcast, mpsc},
-};
-
 use clap::Parser;
-use std::path::PathBuf;
+use statik_common::prelude::*;
+use statik_server::config::ServerConfig;
+use statik_server::server::Server;
+use tokio::select;
+use tokio::sync::{broadcast, mpsc};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -29,15 +27,16 @@ async fn main() -> anyhow::Result<()> {
     let config_path = cli.config.unwrap_or("statik.toml".into());
 
     let config = match tokio::fs::read_to_string(&config_path).await {
-        Ok(s) => {
-            match toml::from_str::<ServerConfig>(&s) {
-                Ok(res) => res,
-                Err(e) => {
-                    println!("Incorrectly formatted statik config file: \"{}\", using default values: {e}", &config_path.display());
-                    ServerConfig::default()
-                }
+        Ok(s) => match toml::from_str::<ServerConfig>(&s) {
+            Ok(res) => res,
+            Err(e) => {
+                println!(
+                    "Incorrectly formatted statik config file: \"{}\", using default values: {e}",
+                    &config_path.display()
+                );
+                ServerConfig::default()
             }
-        }
+        },
         Err(e) => {
             if config_path == PathBuf::from("statik.toml") {
                 //this shouldn't be able to error, as ServerConfig can be serialised.

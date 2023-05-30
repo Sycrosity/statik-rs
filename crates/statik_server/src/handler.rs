@@ -1,17 +1,17 @@
-use std::{io, sync::Arc};
+use std::io;
+use std::sync::Arc;
 
+use statik_common::prelude::*;
 use tokio::sync::{mpsc, RwLock};
 
 use crate::{
-    config::ServerConfig, connection::Connection, /*player::Player, */ shutdown::Shutdown,
+    config::ServerConfig, connection::Connection, /* player::Player, */ shutdown::Shutdown,
 };
-
-use statik_common::prelude::*;
 
 // use tera::{Context, Tera};
 
-/// Per-connection handler. Reads packets sent from `connection` (a tcp stream from a
-/// minecraft client) and sends responses accordingly.
+/// Per-connection handler. Reads packets sent from `connection` (a tcp stream
+/// from a minecraft client) and sends responses accordingly.
 #[derive(Debug)]
 pub struct Handler {
     config: Arc<RwLock<ServerConfig>>,

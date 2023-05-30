@@ -1,23 +1,23 @@
 use std::sync::Arc;
 
-use statik_common::prelude::*;
-use tokio::{
-    net::TcpListener,
-    select,
-    sync::{broadcast, mpsc, RwLock},
-};
-
 use base64::prelude::{Engine as _, BASE64_STANDARD};
+use statik_common::prelude::*;
+use tokio::net::TcpListener;
+use tokio::select;
+use tokio::sync::{broadcast, mpsc, RwLock};
 
-use crate::{config::ServerConfig, connection::Connection, handler::Handler, shutdown::Shutdown};
+use crate::config::ServerConfig;
+use crate::connection::Connection;
+use crate::handler::Handler;
+use crate::shutdown::Shutdown;
 
 pub struct Server {
     /// Configuration for how the server should be run.
     pub config: Arc<RwLock<ServerConfig>>,
 
     /// Minecraft TCP listener that the server will bind and accept minecraft
-    /// client connections from. Set by the `config.general.host` and `config.mc.port`
-    /// fields.
+    /// client connections from. Set by the `config.general.host` and
+    /// `config.mc.port` fields.
     pub mc_listener: TcpListener,
 
     /// API TCP listener that the server will bind and accept api connections
@@ -27,12 +27,12 @@ pub struct Server {
     /// Able to broadcast a shutdown signal to all active connections.
     ///
     /// The initial `notify_shutdown` trigger is provided by the `run` server
-    /// function: the server is then responsible for gracefully shutting down active
-    /// connections. When a connection task is spawned, it is passed a handle to
-    /// the broadcast receiver. When a graceful shutdown is initiated, a `String`
-    /// value is sent via the broadcast::Sender. Each active connection receives it,
-    /// parses the template, reaches a safe termination state, and disconnects the
-    /// client, completing the tast.
+    /// function: the server is then responsible for gracefully shutting down
+    /// active connections. When a connection task is spawned, it is passed
+    /// a handle to the broadcast receiver. When a graceful shutdown is
+    /// initiated, a `String` value is sent via the broadcast::Sender. Each
+    /// active connection receives it, parses the template, reaches a safe
+    /// termination state, and disconnects the client, completing the tast.
     pub notify_shutdown: broadcast::Sender<String>,
 
     /// Used as part of the graceful shutdown process to wait for client
@@ -76,7 +76,10 @@ impl Server {
 
         let config = Arc::new(RwLock::new(config));
 
-        info!("Statik server is up! Broadcasting the mc server on {mc_address}, and the api server on {api_address}.");
+        info!(
+            "Statik server is up! Broadcasting the mc server on {mc_address}, and the api server \
+             on {api_address}."
+        );
 
         Ok(Self {
             config,
@@ -154,7 +157,10 @@ impl Server {
             None => self.config.read().await.mc.disconnect_msg.clone(),
         };
 
-        debug!("sending shutdown notice to connected clients, using disconnect message template: \"{template}\"");
+        debug!(
+            "sending shutdown notice to connected clients, using disconnect message template: \
+             \"{template}\""
+        );
 
         self.notify_shutdown.send(template)?;
 

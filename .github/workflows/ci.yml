@@ -40,16 +40,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run:  ${{ env.PREREQS }}
+      - run: |
+          ${{ env.PREREQS }}
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: nightly
           components: rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+      - name: run cargo fmt
+        run: cargo +nightly fmt --all -- --check
 
   test:
     strategy:

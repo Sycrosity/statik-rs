@@ -6,17 +6,15 @@ pub mod varint;
 
 pub mod prelude {
 
+    pub use anyhow::{anyhow, bail};
+    pub use log::{debug, error, info, log, trace, warn};
+
     pub use crate::chat::*;
     pub use crate::impls::*;
     pub use crate::packet::*;
     pub use crate::raw::*;
     pub use crate::varint::*;
-
-    pub use crate::MINECRAFT_VERSION;
-    pub use crate::PROTOCOL_VERSION;
-
-    pub use anyhow::{anyhow, bail};
-    pub use log::{debug, error, info, log, trace, warn};
+    pub use crate::{MINECRAFT_VERSION, PROTOCOL_VERSION};
 }
 
 pub const MINECRAFT_VERSION: &str = "1.19.4";

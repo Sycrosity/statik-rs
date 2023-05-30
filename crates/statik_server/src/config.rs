@@ -70,11 +70,11 @@ pub struct McServerConfig {
     /// Make sure you are certain this is what you want to enable.
     pub hidden: bool,
 
-    /// What message should be sent to the client by default when disconnecting them.
-    /// Defaults to: "Disconnected from the server."
+    /// What message should be sent to the client by default when disconnecting
+    /// them. Defaults to: "Disconnected from the server."
     ///
-    /// Note: this can be overridden by disconnect specific packets, this is merely
-    /// the default, no reason given fallback message.
+    /// Note: this can be overridden by disconnect specific packets, this is
+    /// merely the default, no reason given fallback message.
     /// Note: can be templated using [Tera](https://tera.netlify.app/), a templating
     /// library inspired by Jinja2 and Django - read their [Documentation](https://tera.netlify.app/docs/)
     /// and [Examples](https://github.com/Keats/tera/tree/master/examples) for possible

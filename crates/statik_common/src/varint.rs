@@ -4,7 +4,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 
 use crate::prelude::*;
 
-const SEGMENT_BITS: u8 = 0x7F;
+const SEGMENT_BITS: u8 = 0x7f;
 const CONTINUE_BIT: u8 = 0x80;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord)]
@@ -33,7 +33,10 @@ impl Decode for VarInt {
             pos += 7;
 
             if pos >= 32 {
-                return Err(anyhow!("Cannot decode VarInt! Exceeds maximum capacity of 5 bytes (2147483647/-2147483648)."));
+                return Err(anyhow!(
+                    "Cannot decode VarInt! Exceeds maximum capacity of 5 bytes \
+                     (2147483647/-2147483648)."
+                ));
             }
         }
     }
