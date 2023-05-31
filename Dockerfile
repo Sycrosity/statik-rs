@@ -16,6 +16,6 @@ RUN addgroup -g 1000 statik
 RUN adduser -D -s /bin/sh -u 1000 -G statik statik
 WORKDIR /var/lib/statik/
 COPY --from=builder /usr/src/statik/target/x86_64-unknown-linux-musl/release/statik .
-RUN chown statik:statik statik
+RUN chown -R statik:statik /var/lib/statik/
 USER statik
 CMD [ "./statik" ]

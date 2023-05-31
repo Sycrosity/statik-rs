@@ -39,14 +39,18 @@ async fn main() -> anyhow::Result<()> {
         },
         Err(e) => {
             if config_path == PathBuf::from("statik.toml") {
-                //this shouldn't be able to error, as ServerConfig can be serialised.
-                tokio::fs::write(
+                //will error if we don't have write permissions.
+                if let Err(e) = tokio::fs::write(
                     PathBuf::from("statik.toml"),
+                    //this shouldn't be able to error, as ServerConfig can be serialised.
                     toml::to_string_pretty(&ServerConfig::default()).unwrap(),
                 )
                 .await
-                .unwrap();
-                println!("Created statik.toml as it could not be found.");
+                {
+                    println!("statik.toml could not be found, but couldn't create one: {e}");
+                } else {
+                    println!("Created statik.toml as it could not be found.");
+                }
             } else {
                 println!(
                     "Could not read statik config file: \"{}\", using default values: {e}",
