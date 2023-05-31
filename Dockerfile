@@ -14,8 +14,8 @@ FROM alpine:latest
 
 RUN addgroup -g 1000 statik
 RUN adduser -D -s /bin/sh -u 1000 -G statik statik
-WORKDIR /usr/local/bin/
+WORKDIR /var/lib/statik/
 COPY --from=builder /usr/src/statik/target/x86_64-unknown-linux-musl/release/statik .
 RUN chown statik:statik statik
 USER statik
-CMD [ "./server" ]
+CMD [ "./statik" ]
