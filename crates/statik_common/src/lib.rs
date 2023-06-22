@@ -17,5 +17,5 @@ pub mod prelude {
     pub use crate::{MINECRAFT_VERSION, PROTOCOL_VERSION};
 }
 
-pub const MINECRAFT_VERSION: &str = "1.19.4";
-pub const PROTOCOL_VERSION: usize = 762;
+pub const MINECRAFT_VERSION: &str = "1.20.1";
+pub const PROTOCOL_VERSION: usize = 763;
