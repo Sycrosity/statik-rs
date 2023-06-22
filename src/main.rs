@@ -4,7 +4,6 @@ mod quit;
 
 use std::path::PathBuf;
 
-use anyhow::anyhow;
 use clap::Parser;
 use statik_common::prelude::*;
 use statik_server::config::ServerConfig;
@@ -21,7 +20,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let config_path = cli.config.unwrap_or("statik.toml".into());

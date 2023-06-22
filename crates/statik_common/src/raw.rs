@@ -13,13 +13,13 @@ impl RawBytes {
 }
 
 impl Encode for RawBytes {
-    fn encode(&self, mut buffer: impl Write) -> anyhow::Result<()> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_all(&self.0)?)
     }
 }
 
 impl Decode for RawBytes {
-    fn decode(mut buffer: impl Read) -> anyhow::Result<Self> {
+    fn decode(mut buffer: impl Read) -> Result<Self> {
         let mut vec = Vec::new();
         buffer.read_to_end(&mut vec)?;
         Ok(Self::new(vec))

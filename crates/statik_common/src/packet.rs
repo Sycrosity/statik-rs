@@ -23,7 +23,7 @@ pub trait Packet: Decode + Encode + Sized + std::fmt::Debug {
 }
 
 pub trait Decode: Sized {
-    fn decode(buffer: impl Read) -> anyhow::Result<Self>;
+    fn decode(buffer: impl Read) -> Result<Self>;
 }
 
 pub trait Encode: Sized {
@@ -35,30 +35,7 @@ pub trait Encode: Sized {
     /// that were originally written must be consumed during the decoding.
     ///
     /// [`decode`]: Decode::decode
-    fn encode(&self, buffer: impl Write) -> anyhow::Result<()>;
-
-    // /// Like [`Encode::encode`], except that a whole slice of values is encoded.
-    // ///
-    // /// This method must be semantically equivalent to encoding every element of
-    // /// the slice in sequence with no leading length prefix (which is exactly
-    // /// what the default implementation does), but a more efficient
-    // /// implementation may be used.
-    // ///
-    // /// This optimization is very important for some types like `u8` where
-    // /// [`write_all`] is used. Because impl specialization is unavailable in
-    // /// stable Rust, we must make the slice specialization part of this trait.
-    // ///
-    // /// [`write_all`]: Write::write_all
-    // fn encode_slice(slice: &[Self], mut buffer: impl Write) -> anyhow::Result<()>
-    // where
-    //     Self: Sized,
-    // {
-    //     for value in slice {
-    //         value.encode(&mut buffer)?;
-    //     }
-
-    //     Ok(())
-    // }
+    fn encode(&self, buffer: impl Write) -> Result<()>;
 }
 
 pub const MAX_PACKET_SIZE: i32 = 2097152;

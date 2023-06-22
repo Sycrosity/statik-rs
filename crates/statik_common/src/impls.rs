@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::io::{Read, Write};
 
-use anyhow::{ensure, Context, Result};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use uuid::Uuid;
 
@@ -15,13 +14,6 @@ impl Encode for bool {
     fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_u8(*self as u8)?)
     }
-
-    // fn encode_slice(slice: &[bool], mut buffer: impl Write) -> Result<()> {
-    //     // SAFETY: Bools have the same layout as u8.
-    //     // Bools are guaranteed to have the correct bit pattern.
-    //     let bytes: &[u8] = unsafe { mem::transmute(slice) };
-    //     Ok(buffer.write_all(bytes)?)
-    // }
 }
 
 // unsigned ints \\
@@ -85,6 +77,65 @@ impl Encode for i64 {
 impl Encode for i128 {
     fn encode(&self, mut buffer: impl Write) -> Result<()> {
         Ok(buffer.write_i128::<BigEndian>(*self)?)
+    }
+}
+
+// Miscellaneous \\
+
+impl Encode for String {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
+        let length = self.len();
+        ensure!(
+            length <= i32::MAX as usize,
+            "byte length of string ({length}) exceeds i32::MAX"
+        );
+
+        VarInt::from(length).encode(&mut buffer)?;
+        Ok(buffer.write_all(self.as_bytes())?)
+    }
+}
+
+impl<T: Encode> Encode for Vec<T> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
+        let length = self.len();
+        ensure!(
+            length <= i32::MAX as usize,
+            "byte length of Vec ({length}) exceeds i32::MAX"
+        );
+
+        VarInt::from(length).encode(&mut buffer)?;
+        for element in self {
+            element.encode(&mut buffer)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<T: Encode> Encode for Option<T> {
+    fn encode(&self, mut buffer: impl Write) -> Result<()> {
+        match self {
+            Some(t) => {
+                true.encode(&mut buffer)?;
+                t.encode(buffer)
+            }
+            None => false.encode(&mut buffer),
+        }
+    }
+}
+
+impl<'a, B> Encode for Cow<'a, B>
+where
+    B: ToOwned + Encode + ?Sized,
+{
+    fn encode(&self, buffer: impl Write) -> Result<()> {
+        self.as_ref().encode(buffer)
+    }
+}
+
+impl Encode for Uuid {
+    fn encode(&self, buffer: impl Write) -> Result<()> {
+        self.as_u128().encode(buffer)
     }
 }
 
@@ -162,20 +213,7 @@ impl Decode for i128 {
     }
 }
 
-// = String = //
-
-impl Encode for String {
-    fn encode(&self, mut buffer: impl Write) -> Result<()> {
-        let length = self.len();
-        ensure!(
-            length <= i32::MAX as usize,
-            "byte length of string ({length}) exceeds i32::MAX"
-        );
-
-        VarInt::from(length).encode(&mut buffer)?;
-        Ok(buffer.write_all(self.as_bytes())?)
-    }
-}
+// Miscellaneous \\
 
 impl Decode for String {
     fn decode(mut buffer: impl Read) -> Result<Self> {
@@ -193,25 +231,6 @@ impl Decode for String {
         }
 
         Ok(std::string::String::from_utf8(buf)?)
-    }
-}
-
-// = Vec's = \\
-
-impl<T: Encode> Encode for Vec<T> {
-    fn encode(&self, mut buffer: impl Write) -> Result<()> {
-        let length = self.len();
-        ensure!(
-            length <= i32::MAX as usize,
-            "byte length of Vec ({length}) exceeds i32::MAX"
-        );
-
-        VarInt::from(length).encode(&mut buffer)?;
-        for element in self {
-            element.encode(&mut buffer)?;
-        }
-
-        Ok(())
     }
 }
 
@@ -237,37 +256,12 @@ impl<T: Decode> Decode for Vec<T> {
     }
 }
 
-// = Option's = \\
-
-impl<T: Encode> Encode for Option<T> {
-    fn encode(&self, mut buffer: impl Write) -> Result<()> {
-        match self {
-            Some(t) => {
-                true.encode(&mut buffer)?;
-                t.encode(buffer)
-            }
-            None => false.encode(&mut buffer),
-        }
-    }
-}
-
 impl<T: Decode> Decode for Option<T> {
     fn decode(mut buffer: impl Read) -> Result<Self> {
         Ok(match bool::decode(&mut buffer)? {
             true => Some(T::decode(&mut buffer)?),
             false => None,
         })
-    }
-}
-
-// = Cow (copy on write) = \\
-
-impl<'a, B> Encode for Cow<'a, B>
-where
-    B: ToOwned + Encode + ?Sized,
-{
-    fn encode(&self, buffer: impl Write) -> Result<()> {
-        self.as_ref().encode(buffer)
     }
 }
 
@@ -281,87 +275,8 @@ where
     }
 }
 
-impl Encode for Uuid {
-    fn encode(&self, buffer: impl Write) -> Result<()> {
-        self.as_u128().encode(buffer)
-    }
-}
-
 impl Decode for Uuid {
     fn decode(buffer: impl Read) -> Result<Self> {
         u128::decode(buffer).map(Uuid::from_u128)
     }
 }
-
-// // == Sequences == \\
-
-// /// Like tuples, fixed-length arrays are encoded and decoded without a VarInt
-// /// length prefix.
-// impl<const N: usize, T: Encode> Encode for [T; N] {
-//     fn encode(&self, buffer: impl Write) -> Result<()> {
-//         T::encode_slice(self, buffer)
-//     }
-// }
-
-// impl<const N: usize, T: Decode> Decode for [T; N] {
-//     fn decode(mut buffer: impl Read) -> Result<Self> {
-
-//         // TODO: rewrite using std::array::try_from_fn when stabilized?
-//         // TODO: specialization for [f64; 3] improved performance.
-//         let mut data: [MaybeUninit<T>; N] = unsafe {
-// MaybeUninit::uninit().assume_init() };
-
-//         for (i, elem) in data.iter_mut().enumerate() {
-//             match T::decode(&mut buffer) {
-//                 Ok(val) => {
-//                     elem.write(val);
-//                 }
-//                 Err(e) => {
-//                     // Call destructors for values decoded so far.
-//                     for elem in &mut data[..i] {
-//                         unsafe { elem.assume_init_drop() };
-//                     }
-//                     return Err(e);
-//                 }
-//             }
-//         }
-
-//         // All values in `data` are initialized.
-//         unsafe { Ok(mem::transmute_copy(&data)) }
-//     }
-// }
-
-// /// References to fixed-length arrays are not length prefixed.
-// impl<const N: usize> Decode for &[u8; N] {
-//     fn decode(mut buffer: impl Read) -> Result<Self> {
-//         let length = buffer.len();
-//         ensure!(
-//             length >= N,
-//             "not enough data to decode u8 array of length {N}"
-//         );
-
-//         let mut buf: Vec<u8> = vec![0; length];
-
-//         buffer.read_exact(&mut buf)?;
-
-//         // let (res, remaining) = buffer.split_at(N);
-//         // let arr = <&[u8; N]>::try_from(res).unwrap();
-//         // *r = remaining;
-
-//         Ok(<&[u8; N]>::try_from(buf.as_ref()).unwrap())
-//     }
-// }
-
-// impl<T: Encode> Encode for [T] {
-//     fn encode(&self, mut buffer: impl Write) -> Result<()> {
-//         let length = self.len();
-//         ensure!(
-//             length <= i32::MAX as usize,
-//             "length of slice ({length}) exceeds i32::MAX"
-//         );
-
-//         VarInt::from(length).encode(&mut buffer)?;
-
-//         T::encode_slice(self, buffer)
-//     }
-// }

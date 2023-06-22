@@ -17,19 +17,19 @@ pub enum State {
 }
 
 impl Encode for State {
-    fn encode(&self, buffer: impl std::io::Write) -> anyhow::Result<()> {
+    fn encode(&self, buffer: impl std::io::Write) -> Result<()> {
         VarInt(*self as i32).encode(buffer)
     }
 }
 
 impl Decode for State {
-    fn decode(buffer: impl std::io::Read) -> anyhow::Result<Self> {
+    fn decode(buffer: impl std::io::Read) -> Result<Self> {
         Ok(match VarInt::decode(buffer)?.0 {
             0 => Self::Handshake,
             1 => Self::Status,
             2 => Self::Login,
             3 => Self::Play,
-            n => anyhow::bail!(
+            n => bail!(
                 "parsed VarInt returned an invalid State: {n}. Only values 0,1,2 and 3 are valid."
             ),
         })

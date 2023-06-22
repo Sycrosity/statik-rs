@@ -2,7 +2,6 @@ use std::io::{self, Cursor, ErrorKind};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use anyhow::bail;
 use bytes::{Buf, BytesMut};
 use statik_common::prelude::*;
 use statik_proto::c2s::handshaking::C2SHandshakingPacket;
@@ -107,7 +106,7 @@ impl Connection {
     /// On success, the received packet is returned. If the `TcpStream`
     /// is closed in a way that doesn't break a packet in half, it returns
     /// `None`. Otherwise, an error is returned.
-    pub async fn handle_connection(&mut self) -> anyhow::Result<()> {
+    pub async fn handle_connection(&mut self) -> Result<()> {
         loop {
             debug!("handling connection with {}", self.address);
 
@@ -129,7 +128,7 @@ impl Connection {
     /// data, the frame is returned and the data removed from the buffer. If not
     /// enough data has been buffered yet, `Ok(None)` is returned. If the
     /// buffered data does not represent a valid frame, `Err` is returned.
-    pub async fn parse_packet(&mut self) -> anyhow::Result<()> {
+    pub async fn parse_packet(&mut self) -> Result<()> {
         let (offset, length) = {
             let mut buf = Cursor::new(&self.buffer[..]);
 
@@ -175,12 +174,12 @@ impl Connection {
         Ok(())
     }
 
-    pub async fn handle_handshake(&mut self, packet: C2SHandshakingPacket) -> anyhow::Result<()> {
+    pub async fn handle_handshake(&mut self, packet: C2SHandshakingPacket) -> Result<()> {
         trace!("(↓) packet recieved: {:?}", &packet);
         match packet {
             C2SHandshakingPacket::Handshake(handshake) => {
                 if handshake.protocol_version.0 as usize != PROTOCOL_VERSION {
-                    return Err(anyhow::anyhow!(
+                    return Err(anyhow!(
                         "Protocol versions do not match! Client had protocol version: {}, while \
                          the server's protocol version is {}.",
                         handshake.protocol_version.0,
@@ -197,7 +196,7 @@ impl Connection {
         }
     }
 
-    pub async fn handle_status(&mut self, packet: C2SStatusPacket) -> anyhow::Result<()> {
+    pub async fn handle_status(&mut self, packet: C2SStatusPacket) -> Result<()> {
         trace!("(↓) packet recieved: {:?}", &packet);
         match packet {
             C2SStatusPacket::StatusRequest(_status_request) => {
@@ -230,7 +229,7 @@ impl Connection {
         }
     }
 
-    pub async fn handle_login(&mut self, packet: C2SLoginPacket) -> anyhow::Result<()> {
+    pub async fn handle_login(&mut self, packet: C2SLoginPacket) -> Result<()> {
         trace!("(↓) packet recieved: {:?}", &packet);
         match packet {
             C2SLoginPacket::LoginStart(login_start) => {
@@ -254,7 +253,7 @@ impl Connection {
     }
 
     ///jank as. fix later.
-    pub async fn write_packet(&mut self, packet: impl Packet) -> anyhow::Result<()> {
+    pub async fn write_packet(&mut self, packet: impl Packet) -> Result<()> {
         packet.encode(&mut self.queue)?;
 
         let packet_len = self.queue.len();

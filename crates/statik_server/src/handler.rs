@@ -67,7 +67,7 @@ impl Handler {
     //         peer_addr = %self.connection.address
     //     ),
     // )]
-    pub async fn run(&mut self) -> anyhow::Result<()> {
+    pub async fn run(&mut self) -> Result<()> {
         // As long as the shutdown signal has not been received, try to read a
         // new packet.
         while !self.shutdown.is_shutdown() {
@@ -83,11 +83,11 @@ impl Handler {
                         if let Some(er) = e.downcast_ref::<io::Error>() {
 
                             if er.kind() == io::ErrorKind::UnexpectedEof {
-                                // return Err(anyhow::anyhow!("connection ended due to: {er} (timeout)"));
+                                // return Err(anyhow!("connection ended due to: {er} (timeout)"));
                                 return Ok(());
                             }
                         }
-                        return Err(anyhow::anyhow!("connection ended with error: {e:#}"));
+                        return Err(anyhow!("connection ended with error: {e:#}"));
                     }
 
                     warn!("shouldn't be possible to be here!");

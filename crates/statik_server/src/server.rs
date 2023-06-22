@@ -55,7 +55,7 @@ impl Server {
         mut config: ServerConfig,
         notify_shutdown: broadcast::Sender<String>,
         shutdown_complete_tx: mpsc::Sender<String>,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self> {
         let mc_address = format!("{}:{}", config.general.host, config.mc.port);
         let api_address = format!("{}:{}", config.general.host, config.api.port);
 
@@ -116,7 +116,7 @@ impl Server {
 
                             });
                         },
-                        Err(err) => error!("Failed to accept mc connection: {:#}", anyhow::anyhow!(err)),
+                        Err(err) => error!("Failed to accept mc connection: {:#}", anyhow!(err)),
                     }
                 }
                 res = self.api_listener.accept() => {
@@ -138,7 +138,7 @@ impl Server {
 
                             // });
                         },
-                        Err(err) => error!("Failed to accept api connection: {:#}", anyhow::anyhow!(err)),
+                        Err(err) => error!("Failed to accept api connection: {:#}", anyhow!(err)),
                     }
                 }
             }
@@ -149,7 +149,7 @@ impl Server {
     /// server. Supply `None` to use the default disconnect message, or
     /// `Some(my_disconnecting_reason)` to send clients a custom disconnect
     /// message. the message will be parsed using the [`Tera`] templater.
-    pub async fn shutdown(&self, reason: Option<String>) -> anyhow::Result<()> {
+    pub async fn shutdown(&self, reason: Option<String>) -> Result<()> {
         info!("Shutting down the server...");
 
         let template = match reason {

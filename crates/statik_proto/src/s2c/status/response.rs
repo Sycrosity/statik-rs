@@ -114,13 +114,13 @@ impl StatusResponse {
 }
 
 impl Encode for StatusResponse {
-    fn encode(&self, buffer: impl std::io::Write) -> anyhow::Result<()> {
+    fn encode(&self, buffer: impl std::io::Write) -> Result<()> {
         serde_json::to_string(self)?.encode(buffer)
     }
 }
 
 impl Decode for StatusResponse {
-    fn decode(buffer: impl std::io::Read) -> anyhow::Result<Self> {
+    fn decode(buffer: impl std::io::Read) -> Result<Self> {
         Ok(serde_json::from_str(&String::decode(buffer)?)?)
     }
 }
