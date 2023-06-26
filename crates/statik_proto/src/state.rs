@@ -1,11 +1,3 @@
-// #[derive(Debug, Clone, Copy)]
-// pub enum State {
-//     Handshake = VarInt(0),
-//     Status = VarInt(1),
-//     Login = VarInt(2),
-//     Play = VarInt(3),
-// }
-
 use statik_common::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -33,5 +25,11 @@ impl Decode for State {
                 "parsed VarInt returned an invalid State: {n}. Only values 0,1,2 and 3 are valid."
             ),
         })
+    }
+}
+
+impl std::fmt::Display for State {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_string().trim_start_matches("State::"))
     }
 }

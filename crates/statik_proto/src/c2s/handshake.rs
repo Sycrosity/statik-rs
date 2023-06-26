@@ -6,7 +6,7 @@ use handshake::*;
 use statik_derive::PacketGroup;
 
 #[derive(Debug, PacketGroup)]
-pub enum C2SHandshakingPacket {
+pub enum C2SHandshakePacket {
     Handshake(C2SHandshake),
     // LegacyPing(C2SLegacyPing),
 }

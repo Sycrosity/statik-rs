@@ -13,7 +13,7 @@ keywords = ["minecraft", "minecraft-server", "statik"]
 [dependencies]
 #sending http requests
 reqwest = { workspace = true, features = ["rustls-tls", "json"]}
-kube = { version = "0.83.0", default-features = false, features = ["client", "rustls-tls", "derive", ""] }
+kube = { version = "0.83.0", default-features = false, features = ["client", "rustls-tls", "derive"] }
 k8s-openapi = { version = "0.18.0", features = ["v1_26"] }
 #templating
 # tera = { workspace = true }

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use bytes::{Buf, BytesMut};
 use statik_common::prelude::*;
-use statik_proto::c2s::handshaking::C2SHandshakingPacket;
+use statik_proto::c2s::handshake::C2SHandshakePacket;
 use statik_proto::c2s::login::C2SLoginPacket;
 use statik_proto::c2s::status::C2SStatusPacket;
 use statik_proto::s2c::login::disconnect::S2CDisconnect;
@@ -108,7 +108,7 @@ impl Connection {
     /// `None`. Otherwise, an error is returned.
     pub async fn handle_connection(&mut self) -> Result<()> {
         loop {
-            debug!("handling connection with {}", self.address);
+            trace!("handling connection with {}", self.address);
 
             if self.buffer.is_empty() {
                 let bytes_read = self.stream.read_buf(&mut self.buffer).await?;
@@ -156,7 +156,7 @@ impl Connection {
 
         match self.state {
             State::Handshake => {
-                self.handle_handshake(C2SHandshakingPacket::decode(&mut buf)?)
+                self.handle_handshake(C2SHandshakePacket::decode(&mut buf)?)
                     .await?
             }
 
@@ -174,10 +174,10 @@ impl Connection {
         Ok(())
     }
 
-    pub async fn handle_handshake(&mut self, packet: C2SHandshakingPacket) -> Result<()> {
+    pub async fn handle_handshake(&mut self, packet: C2SHandshakePacket) -> Result<()> {
         trace!("(↓) packet recieved: {:?}", &packet);
         match packet {
-            C2SHandshakingPacket::Handshake(handshake) => {
+            C2SHandshakePacket::Handshake(handshake) => {
                 if handshake.protocol_version.0 as usize != PROTOCOL_VERSION {
                     return Err(anyhow!(
                         "Protocol versions do not match! Client had protocol version: {}, while \

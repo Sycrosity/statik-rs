@@ -1,3 +1,3 @@
-pub mod handshaking;
+pub mod handshake;
 pub mod login;
 pub mod status;

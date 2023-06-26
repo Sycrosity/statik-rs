@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use syn::spanned::Spanned;
-use syn::{Data, DeriveInput, Error, Fields, Ident, Result};
+use syn::{Data, DeriveInput, Error, Fields, Ident, Result, Path};
 
 pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream> {
     let DeriveInput {
@@ -43,18 +43,19 @@ pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream
 
                             let packet_name = match &field.ty {
                                 syn::Type::Path(p) => {
-                                    if let Some(ident) = p.path.get_ident() {
-                                        ident
-                                    } else {
-                                        return Err(Error::new(
-                                            field.span(),
-                                            format!(
-                                                "(shouldn't be possible) Field of variant \
-                                                 {variant_name} of {input_name} must have an \
-                                                 ident!",
-                                            ),
-                                        ));
-                                    }
+                                    // if let Some(ident) = p.path.get_ident() {
+                                    //     ident
+                                    // } else {
+                                    //     return Err(Error::new(
+                                    //         field.span(),
+                                    //         format!(
+                                    //             "(shouldn't be possible) Field of variant \
+                                    //              {variant_name} of {input_name} must have an \
+                                    //              ident!",
+                                    //         ),
+                                    //     ));
+                                    // }
+                                    &p.path
                                 }
                                 _ => {
                                     return Err(Error::new(
@@ -72,7 +73,7 @@ pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream
                         _ => Err(Error::new(variant.ident.span(), enum_ctx)),
                     }
                 })
-                .collect::<Result<Vec<(&Ident, &Ident)>>>()?;
+                .collect::<Result<Vec<(&Path, &Ident)>>>()?;
 
             let from_fields = fields
                 .iter()
