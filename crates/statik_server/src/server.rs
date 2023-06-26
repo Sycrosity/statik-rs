@@ -2,14 +2,13 @@ use std::sync::Arc;
 
 use base64::prelude::{Engine as _, BASE64_STANDARD};
 use statik_common::prelude::*;
-use tokio::net::TcpListener;
-use tokio::select;
-use tokio::sync::{broadcast, mpsc, RwLock};
+use tokio::{
+    net::TcpListener,
+    select,
+    sync::{broadcast, mpsc, RwLock},
+};
 
-use crate::config::ServerConfig;
-use crate::connection::Connection;
-use crate::handler::Handler;
-use crate::shutdown::Shutdown;
+use crate::{config::ServerConfig, connection::Connection, handler::Handler, shutdown::Shutdown};
 
 pub struct Server {
     /// Configuration for how the server should be run.

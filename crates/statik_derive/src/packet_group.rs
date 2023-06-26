@@ -1,6 +1,5 @@
 use proc_macro2::TokenStream;
-use syn::spanned::Spanned;
-use syn::{Data, DeriveInput, Error, Fields, Ident, Result, Path};
+use syn::{spanned::Spanned, Data, DeriveInput, Error, Fields, Ident, Path, Result};
 
 pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream> {
     let DeriveInput {

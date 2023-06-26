@@ -1,5 +1,7 @@
-use std::borrow::Cow;
-use std::io::{Read, Write};
+use std::{
+    borrow::Cow,
+    io::{Read, Write},
+};
 
 use crate::prelude::*;
 

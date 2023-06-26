@@ -6,10 +6,11 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use statik_common::prelude::*;
-use statik_server::config::ServerConfig;
-use statik_server::server::Server;
-use tokio::select;
-use tokio::sync::{broadcast, mpsc};
+use statik_server::{config::ServerConfig, server::Server};
+use tokio::{
+    select,
+    sync::{broadcast, mpsc},
+};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]

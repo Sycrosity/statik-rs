@@ -1,19 +1,27 @@
-use std::io::{self, Cursor, ErrorKind};
-use std::net::SocketAddr;
-use std::sync::Arc;
+use std::{
+    io::{self, Cursor, ErrorKind},
+    net::SocketAddr,
+    sync::Arc,
+};
 
 use bytes::{Buf, BytesMut};
 use statik_common::prelude::*;
-use statik_proto::c2s::handshake::C2SHandshakePacket;
-use statik_proto::c2s::login::C2SLoginPacket;
-use statik_proto::c2s::status::C2SStatusPacket;
-use statik_proto::s2c::login::disconnect::S2CDisconnect;
-use statik_proto::s2c::status::pong::S2CPong;
-use statik_proto::s2c::status::response::{Players, S2CStatusResponse, StatusResponse};
-use statik_proto::state::State;
-use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
-use tokio::net::TcpStream;
-use tokio::sync::RwLock;
+use statik_proto::{
+    c2s::{handshake::C2SHandshakePacket, login::C2SLoginPacket, status::C2SStatusPacket},
+    s2c::{
+        login::disconnect::S2CDisconnect,
+        status::{
+            pong::S2CPong,
+            response::{Players, S2CStatusResponse, StatusResponse},
+        },
+    },
+    state::State,
+};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt, BufWriter},
+    net::TcpStream,
+    sync::RwLock,
+};
 
 use crate::config::ServerConfig;
 

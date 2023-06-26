@@ -1,5 +1,7 @@
-use tokio::signal::unix::SignalKind;
-use tokio::signal::{self};
+use tokio::signal::{
+    unix::SignalKind,
+    {self},
+};
 
 pub async fn sigterm() -> tokio::io::Result<()> {
     signal::unix::signal(SignalKind::terminate())?.recv().await;

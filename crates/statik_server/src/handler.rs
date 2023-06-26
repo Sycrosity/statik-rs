@@ -1,5 +1,4 @@
-use std::io;
-use std::sync::Arc;
+use std::{io, sync::Arc};
 
 use statik_common::prelude::*;
 use tokio::sync::{mpsc, RwLock};
