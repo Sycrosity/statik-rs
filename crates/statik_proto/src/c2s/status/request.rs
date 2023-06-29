@@ -1,6 +1,6 @@
 use statik_derive::Packet;
 
 #[derive(Debug, Packet)]
-#[packet_id = 0x00]
+#[packet(id = 0x00)]
 ///_no fields._
 pub struct C2SStatusRequest {}

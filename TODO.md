@@ -8,3 +8,4 @@
 * [ ] add a whitelist of players that can join
 * [ ] add a player list that updates when players join, updating the player number dynamically
 * [ ] ~~see if it's possible to scale down the `toml` dependency, or replace it with a json/ron/other smaller file crates~~ realistically not possible
+* [ ] refactor packets into overarching S2C and C2S groups for increased generalism

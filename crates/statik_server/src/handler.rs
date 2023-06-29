@@ -1,6 +1,6 @@
 use std::{io, sync::Arc};
 
-use statik_common::prelude::*;
+use statik_core::prelude::*;
 use tokio::sync::{mpsc, RwLock};
 
 use crate::{
@@ -13,6 +13,7 @@ use crate::{
 /// from a minecraft client) and sends responses accordingly.
 #[derive(Debug)]
 pub struct Handler {
+    #[allow(unused)]
     config: Arc<RwLock<ServerConfig>>,
 
     /// The TCP connection implemented using a buffered `TcpStream` for parsing
@@ -76,6 +77,8 @@ impl Handler {
                 res = self.connection.handle_connection() => {
 
                     if let Err(e) = res {
+
+                        warn!("{e:?}");
 
                         // EOF can happen if the client disconnects while joining, which isn't
                         // very erroneous.

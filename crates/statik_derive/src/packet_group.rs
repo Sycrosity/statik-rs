@@ -1,17 +1,13 @@
 use proc_macro2::TokenStream;
-use syn::{spanned::Spanned, Data, DeriveInput, Error, Fields, Ident, Path, Result};
+use quote::quote;
+use syn::{parse2, spanned::Spanned, Data, DeriveInput, Error, Fields, Ident, Path, Result};
 
-pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream> {
-    let DeriveInput {
-        // attrs,
-        // vis,
-        ident: input_name,
-        // generics,
-        data,
-        ..
-    } = input;
+pub fn derive_packet_group(item: TokenStream) -> Result<TokenStream> {
+    let input = parse2::<DeriveInput>(item)?;
 
-    match data {
+    let ident = input.ident;
+
+    match &input.data {
         Data::Struct(s) => Err(Error::new(
             s.struct_token.span,
             "cannot derive `Packet` on structs YET",
@@ -24,8 +20,9 @@ pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream
                     let variant_name = &variant.ident;
 
                     let enum_ctx = format!(
-                        "enum must have unnamed fields: `{variant_name}` in `{input_name}` is not \
-                         an unnamed field.",
+                        "enum must have unnamed fields: `{variant_name}` in `{}` is not an \
+                         unnamed field.",
+                        &ident
                     );
 
                     match &variant.fields {
@@ -33,7 +30,7 @@ pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream
                             if fields.unnamed.len() != 1 {
                                 return Err(Error::new(
                                     fields.span(),
-                                    format!("variants of {input_name} must only have one field!",),
+                                    format!("variants of {} must only have one field!", &ident),
                                 ));
                             }
 
@@ -41,27 +38,13 @@ pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream
                             let field = fields.unnamed.first().unwrap();
 
                             let packet_name = match &field.ty {
-                                syn::Type::Path(p) => {
-                                    // if let Some(ident) = p.path.get_ident() {
-                                    //     ident
-                                    // } else {
-                                    //     return Err(Error::new(
-                                    //         field.span(),
-                                    //         format!(
-                                    //             "(shouldn't be possible) Field of variant \
-                                    //              {variant_name} of {input_name} must have an \
-                                    //              ident!",
-                                    //         ),
-                                    //     ));
-                                    // }
-                                    &p.path
-                                }
+                                syn::Type::Path(p) => &p.path,
                                 _ => {
                                     return Err(Error::new(
                                         field.span(),
                                         format!(
-                                            "Field of variant {variant_name} of {input_name} must \
-                                             be a path!",
+                                            "Field of variant {variant_name} of {} must be a path!",
+                                            &ident
                                         ),
                                     ));
                                 }
@@ -78,7 +61,8 @@ pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream
                 .iter()
                 .map(|(packet_name, variant_name)| {
                     quote! {
-                        impl From<#packet_name> for #input_name {
+
+                        impl From<#packet_name> for #ident {
                             fn from(p: #packet_name) -> Self {
                                 Self::#variant_name(p)
                             }
@@ -91,7 +75,7 @@ pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream
                 .iter()
                 .map(|(packet_name, variant_name)| {
                     quote! {
-                        #packet_name::PACKET_ID => {
+                        #packet_name::ID => {
 
                             Ok(Self::#variant_name(#packet_name::decode(&mut _buffer)?))
 
@@ -100,15 +84,26 @@ pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream
                 })
                 .collect::<TokenStream>();
 
+            // let encode_fields = fields
+            //     .iter()
+            //     .map(|(packet_name, variant_name)| {
+            //         // let ctx = format!("failed to encode packet `{packet_name}` in
+            // `{ident}`");         quote! {
+            //             #packet_name.encode(&mut _buffer)?;
+            //             Ok(())
+            //         }
+            //     })
+            //     .collect::<TokenStream>();
+
             Ok(quote! {
 
                 #from_fields
 
-                impl ::statik_common::packet::Decode for #input_name {
+                impl ::statik_core::packet::Decode for #ident {
 
                     fn decode(mut _buffer: impl ::std::io::Read) -> ::anyhow::Result<Self> {
 
-                        use ::statik_common::{packet::{Decode, Packet}, varint::VarInt};
+                        use ::statik_core::{packet::{Decode, Packet}, varint::VarInt};
                         use ::anyhow::{Context, ensure, bail, Error};
 
                         match VarInt::decode(&mut _buffer)?.0 {
@@ -118,25 +113,21 @@ pub fn expand_derive_packet_group(input: &mut DeriveInput) -> Result<TokenStream
                         }
                     }
                 }
+
+                // impl ::statik_core::packet::Encode for #ident {
+
+                //     fn encode(&self, mut _buffer: impl ::std::io::Write) -> ::anyhow::Result<Self> {
+
+                //         use ::statik_core::{packet::Encode, varint::VarInt};
+                //         use ::anyhow::{Context, ensure, bail, Error};
+
+                //         VarInt(#id).encode(&mut _buffer)?;
+                //         #encode_fields
+
+                //         Ok(())
+                //     }
+                // }
             })
-
-            // encode_arms
-            // Ok(quote! {
-            //     #[allow(unused_imports, unreachable_code)]
-            //     impl #impl_generics ::valence_core::__private::Encode for
-            // #input_name #ty_generics     #where_clause
-            //     {
-            //         fn encode(&self, mut _w: impl ::std::io::Write) ->
-            // ::valence_core::__private::Result<()> {
-            // use ::valence_core::__private::{Encode, VarInt, Context};
-
-            //             match self {
-            //                 #encode_arms
-            //                 _ => unreachable!(),
-            //             }
-            //         }
-            //     }
-            // })
         }
         Data::Union(u) => Err(Error::new(
             u.union_token.span,

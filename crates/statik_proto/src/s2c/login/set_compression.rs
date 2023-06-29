@@ -1,8 +1,8 @@
-use statik_common::prelude::*;
-use statik_derive::Packet;
+// use statik_core::prelude::*;
+// use statik_derive::Packet;
 
-#[derive(Debug, Packet)]
-#[packet_id = 0x03]
-pub struct S2CSetCompression {
-    pub threshold: VarInt,
-}
+// #[derive(Debug, Packet)]
+// #[packet(id = 0x03)]
+// pub struct S2CSetCompression {
+//     pub threshold: VarInt,
+// }

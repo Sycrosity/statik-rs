@@ -5,17 +5,10 @@ use std::{
 };
 
 use bytes::{Buf, BytesMut};
-use statik_common::prelude::*;
+use statik_core::prelude::*;
 use statik_proto::{
-    c2s::{handshake::C2SHandshakePacket, login::C2SLoginPacket, status::C2SStatusPacket},
-    s2c::{
-        login::disconnect::S2CDisconnect,
-        status::{
-            pong::S2CPong,
-            response::{Players, S2CStatusResponse, StatusResponse},
-        },
-    },
-    state::State,
+    c2s::C2SPacket,
+    s2c::status::response::{Players, StatusResponse},
 };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufWriter},
@@ -25,6 +18,7 @@ use tokio::{
 
 use crate::config::ServerConfig;
 
+#[allow(unused)]
 /// Checks if a username COULD be a valid minecraft account's username.
 ///
 /// There is a few possible cases where this won't apply, like the handful
@@ -162,30 +156,26 @@ impl Connection {
         // with bytes.
         let mut buf = Cursor::new(&self.buffer[..length]);
 
+        let packet = C2SPacket::decode(&mut buf)?;
+        debug!("(↓) packet recieved: {:?}", &packet);
+
         match self.state {
-            State::Handshake => {
-                self.handle_handshake(C2SHandshakePacket::decode(&mut buf)?)
-                    .await?
-            }
+            State::Handshake => {println!("hand"); self.handle_handshake(packet).await?},
 
-            State::Status => {
-                self.handle_status(C2SStatusPacket::decode(&mut buf)?)
-                    .await?
-            }
+            State::Status => {println!("here");self.handle_status(packet).await?},
 
-            State::Login => self.handle_login(C2SLoginPacket::decode(&mut buf)?).await?,
+            State::Login => self.handle_login(packet).await?,
             State::Play => unimplemented!(),
         }
 
         self.buffer.advance(length);
-        // }
+
         Ok(())
     }
 
-    pub async fn handle_handshake(&mut self, packet: C2SHandshakePacket) -> Result<()> {
-        trace!("(↓) packet recieved: {:?}", &packet);
+    pub async fn handle_handshake(&mut self, packet: C2SPacket) -> Result<()> {
         match packet {
-            C2SHandshakePacket::Handshake(handshake) => {
+            C2SPacket::Handshake(handshake) => {
                 if handshake.protocol_version.0 as usize != PROTOCOL_VERSION {
                     return Err(anyhow!(
                         "Protocol versions do not match! Client had protocol version: {}, while \
@@ -201,13 +191,16 @@ impl Connection {
 
                 Ok(())
             }
+            _ => Err(anyhow!(
+                "Recieved a non handshake packet in the handshake stage!"
+            )),
         }
     }
 
-    pub async fn handle_status(&mut self, packet: C2SStatusPacket) -> Result<()> {
-        trace!("(↓) packet recieved: {:?}", &packet);
+    pub async fn handle_status(&mut self, packet: C2SPacket) -> Result<()> {
+        use statik_proto::s2c::status::{S2CPong, S2CStatusResponse};
         match packet {
-            C2SStatusPacket::StatusRequest(_status_request) => {
+            C2SPacket::StatusRequest(_status_request) => {
                 let config = self.config.read().await;
 
                 let status_response = S2CStatusResponse {
@@ -225,7 +218,7 @@ impl Connection {
 
                 Ok(())
             }
-            C2SStatusPacket::Ping(ping) => {
+            C2SPacket::Ping(ping) => {
                 let pong = S2CPong {
                     payload: ping.payload,
                 };
@@ -234,13 +227,14 @@ impl Connection {
 
                 Ok(())
             }
+            _ => Err(anyhow!("Recieved a non status packet in the status stage!")),
         }
     }
 
-    pub async fn handle_login(&mut self, packet: C2SLoginPacket) -> Result<()> {
-        trace!("(↓) packet recieved: {:?}", &packet);
+    pub async fn handle_login(&mut self, packet: C2SPacket) -> Result<()> {
+        use statik_proto::s2c::login::S2CDisconnect;
         match packet {
-            C2SLoginPacket::LoginStart(login_start) => {
+            C2SPacket::LoginStart(login_start) => {
                 //later use tera templating?
                 let disconnect = S2CDisconnect {
                     reason: Chat::new(

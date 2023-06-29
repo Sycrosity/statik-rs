@@ -18,4 +18,4 @@ uuid = { workspace = true }
 anyhow = { workspace = true }
 
 statik_derive = { workspace = true }
-statik_common = { workspace = true }
+statik_core = { workspace = true }

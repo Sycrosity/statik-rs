@@ -19,4 +19,4 @@ quote = "1"
 syn = { version = "2", features = ["full"] }
 proc-macro2 = "1"
 
-# statik_common = { workspace = true }
+statik_core = { workspace = true }

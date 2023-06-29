@@ -1,16 +1,8 @@
 use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
-use statik_common::prelude::*;
-use statik_derive::Packet;
+use statik_core::prelude::*;
 use uuid::Uuid;
-
-#[derive(Debug, Packet)]
-#[packet_id = 0x00]
-pub struct S2CStatusResponse {
-    ///See [Server List Ping#Response](https://wiki.vg/Server_List_Ping#Response); as with all strings this is prefixed by its length as a VarInt.
-    pub json_response: StatusResponse,
-}
 
 /// # Examples
 ///

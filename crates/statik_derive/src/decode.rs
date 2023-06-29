@@ -1,7 +1,10 @@
 use proc_macro2::TokenStream;
-use syn::{DeriveInput, Error, Fields, Result};
+use quote::quote;
+use syn::{parse2, DeriveInput, Error, Fields, Result};
 
-pub fn expand_derive_decode(input: &mut DeriveInput) -> Result<TokenStream> {
+pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
+    let input = parse2::<DeriveInput>(item)?;
+
     let DeriveInput {
         // attrs,
         // vis,
@@ -19,7 +22,7 @@ pub fn expand_derive_decode(input: &mut DeriveInput) -> Result<TokenStream> {
                         let name = f.ident.as_ref().unwrap();
                         let ctx = format!("failed to decode field `{name}` in `{ident}`");
                         quote! {
-                            #name: ::statik_common::prelude::Decode::decode(&mut _buffer).context(#ctx)?,
+                            #name: ::statik_core::prelude::Decode::decode(&mut _buffer).context(#ctx)?,
                         }
                     });
 
@@ -34,7 +37,7 @@ pub fn expand_derive_decode(input: &mut DeriveInput) -> Result<TokenStream> {
                         .map(|i| {
                             let ctx = format!("failed to decode field `{i}` in `{ident}`");
                             quote! {
-                                ::statik_common::prelude::Decode::decode(&mut _buffer).context(#ctx)?,
+                                ::statik_core::prelude::Decode::decode(&mut _buffer).context(#ctx)?,
                             }
                         })
                         .collect::<TokenStream>();
@@ -48,11 +51,11 @@ pub fn expand_derive_decode(input: &mut DeriveInput) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl ::statik_common::packet::Decode for #ident
+                impl ::statik_core::packet::Decode for #ident
                 {
                     fn decode(mut _buffer: impl ::std::io::Read) -> ::anyhow::Result<Self> {
 
-                        use ::statik_common::packet::Decode;
+                        use ::statik_core::packet::Decode;
                         use ::anyhow::{Context, ensure};
 
                         Ok(#decode_fields)

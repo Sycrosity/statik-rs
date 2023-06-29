@@ -1,24 +1,28 @@
 use proc_macro2::{Span, TokenStream};
-use syn::{Attribute, Data, DeriveInput, Error, Expr, Fields, Lit, LitInt, Meta, Result};
+use quote::quote;
+use syn::{
+    parse2, parse_quote, spanned::Spanned, Attribute, Data, DeriveInput, Error, Expr, Fields,
+    LitInt, LitStr, Result,
+};
 
-pub fn expand_derive_packet(input: &mut DeriveInput) -> Result<TokenStream> {
-    let DeriveInput {
-        attrs,
-        // vis,
-        ident,
-        // generics,
-        data,
-        ..
-    } = input;
+pub fn derive_packet(item: TokenStream) -> Result<TokenStream> {
+    let input = parse2::<DeriveInput>(item)?;
 
-    let Some(packet_id) = extract_packet_id_attr(attrs)? else {
-        return Err(Error::new(
-            input.ident.span(),
-            "cannot derive `Packet` without `#[packet_id = ...]` helper attribute",
-        ))
+    let ident = input.ident.clone();
+
+    let Some(packet_attr) = parse_packet_helper_attr(&input.attrs)? else {
+        return Err(Error::new(input.span(), "missing `packet` attribute"));
     };
 
-    match data {
+    let Some(id) = packet_attr.id else {
+        return Err(Error::new(packet_attr.span, "missing `id = ...` value from packet attribute"));
+    };
+
+    let state = packet_attr
+        .state
+        .unwrap_or_else(|| parse_quote!(::statik_core::state::State::Play));
+
+    match input.data {
         Data::Struct(s) => {
             let decode_fields = match &s.fields {
                 Fields::Named(fields) => {
@@ -26,7 +30,7 @@ pub fn expand_derive_packet(input: &mut DeriveInput) -> Result<TokenStream> {
                         let name = f.ident.as_ref().unwrap();
                         let ctx = format!("failed to decode field `{name}` in `{ident}`");
                         quote! {
-                            #name: ::statik_common::prelude::Decode::decode(&mut _buffer).context(#ctx)?,
+                            #name: ::statik_core::prelude::Decode::decode(&mut _buffer).context(#ctx)?,
                         }
                     });
 
@@ -41,7 +45,7 @@ pub fn expand_derive_packet(input: &mut DeriveInput) -> Result<TokenStream> {
                         .map(|i| {
                             let ctx = format!("failed to decode field `{i}` in `{ident}`");
                             quote! {
-                                ::statik_common::prelude::Decode::decode(&mut _buffer).context(#ctx)?,
+                                ::statik_core::prelude::Decode::decode(&mut _buffer).context(#ctx)?,
                             }
                         })
                         .collect::<TokenStream>();
@@ -79,14 +83,14 @@ pub fn expand_derive_packet(input: &mut DeriveInput) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl ::statik_common::packet::Encode for #ident
+                impl ::statik_core::packet::Encode for #ident
                 {
                     fn encode(&self, mut _buffer: impl ::std::io::Write) -> ::anyhow::Result<()> {
 
-                        use ::statik_common::{packet::Encode, varint::VarInt};
+                        use ::statik_core::{packet::Encode, varint::VarInt};
                         use ::anyhow::{Context, ensure};
 
-                        VarInt(#packet_id).encode(&mut _buffer)?;
+                        VarInt(#id).encode(&mut _buffer)?;
                         #encode_fields
 
                         Ok(())
@@ -94,24 +98,31 @@ pub fn expand_derive_packet(input: &mut DeriveInput) -> Result<TokenStream> {
                 }
 
                 #[allow(unused_imports)]
-                impl ::statik_common::packet::Decode for #ident
+                impl ::statik_core::packet::Decode for #ident
                 {
                     fn decode(mut _buffer: impl ::std::io::Read) -> ::anyhow::Result<Self> {
 
-                        use ::statik_common::{packet::Decode, varint::VarInt};
+                        use ::statik_core::{packet::Decode, varint::VarInt};
                         use ::anyhow::{Context, ensure};
 
                         Ok(#decode_fields)
                     }
                 }
 
-                impl ::statik_common::packet::Packet for #ident {
+                impl ::statik_core::packet::Packet for #ident {
 
-                    const PACKET_ID: i32 = #packet_id;
+                    const ID: i32 = #id;
+                    const STATE: ::statik_core::state::State = #state;
 
-                    fn id(&self) -> ::statik_common::varint::VarInt {
+                    fn id(&self) -> ::statik_core::varint::VarInt {
 
-                        ::statik_common::varint::VarInt(Self::PACKET_ID)
+                        ::statik_core::varint::VarInt(Self::ID)
+
+                    }
+
+                    fn state(&self) -> ::statik_core::state::State {
+
+                        Self::STATE
 
                     }
                 }
@@ -129,21 +140,51 @@ pub fn expand_derive_packet(input: &mut DeriveInput) -> Result<TokenStream> {
     }
 }
 
-fn extract_packet_id_attr(attrs: &[Attribute]) -> Result<Option<LitInt>> {
+struct PacketAttr {
+    span: Span,
+    id: Option<i32>,
+    tag: Option<i32>,
+    name: Option<LitStr>,
+    side: Option<Expr>,
+    state: Option<Expr>,
+}
+
+fn parse_packet_helper_attr(attrs: &[Attribute]) -> Result<Option<PacketAttr>> {
     for attr in attrs {
-        if let Meta::NameValue(n) = &attr.meta {
-            if n.path.is_ident("packet_id") {
-                let span = n.path.segments.first().unwrap().ident.span();
+        if attr.path().is_ident("packet") {
+            let mut res = PacketAttr {
+                span: attr.span(),
+                id: None,
+                tag: None,
+                name: None,
+                side: None,
+                state: None,
+            };
 
-                if let Expr::Lit(l) = &n.value {
-                    if let Lit::Int(i) = &l.lit {
-                        return Ok(Some(i.clone()));
-                    }
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("id") {
+                    res.id = Some(meta.value()?.parse::<LitInt>()?.base10_parse::<i32>()?);
+                    Ok(())
+                } else if meta.path.is_ident("tag") {
+                    res.tag = Some(meta.value()?.parse::<LitInt>()?.base10_parse::<i32>()?);
+                    Ok(())
+                } else if meta.path.is_ident("name") {
+                    res.name = Some(meta.value()?.parse::<LitStr>()?);
+                    Ok(())
+                } else if meta.path.is_ident("side") {
+                    res.side = Some(meta.value()?.parse::<Expr>()?);
+                    Ok(())
+                } else if meta.path.is_ident("state") {
+                    res.state = Some(meta.value()?.parse::<Expr>()?);
+                    Ok(())
+                } else {
+                    Err(meta.error("unrecognized packet argument"))
                 }
+            })?;
 
-                return Err(Error::new(span, "packet ID must be an integer literal"));
-            }
+            return Ok(Some(res));
         }
     }
+
     Ok(None)
 }

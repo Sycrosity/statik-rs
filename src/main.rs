@@ -5,7 +5,7 @@ mod quit;
 use std::path::PathBuf;
 
 use clap::Parser;
-use statik_common::prelude::*;
+use statik_core::prelude::*;
 use statik_server::{config::ServerConfig, server::Server};
 use tokio::{
     select,

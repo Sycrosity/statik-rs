@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use base64::prelude::{Engine as _, BASE64_STANDARD};
-use statik_common::prelude::*;
+use statik_core::prelude::*;
 use tokio::{
     net::TcpListener,
     select,
