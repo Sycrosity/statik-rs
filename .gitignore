@@ -8,3 +8,5 @@ flamegraph*.svg
 statik.toml
 /assets
 /tools
+
+*.code-workspace
