@@ -109,7 +109,7 @@ impl Connection {
     /// `None`. Otherwise, an error is returned.
     pub async fn handle_connection(&mut self) -> anyhow::Result<()> {
         loop {
-            debug!("handling connection with {}", self.address);
+            trace!("handling connection with {}", self.address);
 
             if self.buffer.is_empty() {
                 let bytes_read = self.stream.read_buf(&mut self.buffer).await?;
@@ -176,7 +176,7 @@ impl Connection {
     }
 
     pub async fn handle_handshake(&mut self, packet: C2SHandshakingPacket) -> anyhow::Result<()> {
-        trace!("(↓) packet recieved: {:?}", &packet);
+        trace!("(↓) handshake packet recieved: {:?}", &packet);
         match packet {
             C2SHandshakingPacket::Handshake(handshake) => {
                 if handshake.protocol_version.0 as usize != PROTOCOL_VERSION {
@@ -198,7 +198,7 @@ impl Connection {
     }
 
     pub async fn handle_status(&mut self, packet: C2SStatusPacket) -> anyhow::Result<()> {
-        trace!("(↓) packet recieved: {:?}", &packet);
+        trace!("(↓) status packet recieved: {:?}", &packet);
         match packet {
             C2SStatusPacket::StatusRequest(_status_request) => {
                 let config = self.config.read().await;
@@ -231,9 +231,21 @@ impl Connection {
     }
 
     pub async fn handle_login(&mut self, packet: C2SLoginPacket) -> anyhow::Result<()> {
-        trace!("(↓) packet recieved: {:?}", &packet);
+        trace!("(↓) login packet recieved: {:?}", &packet);
         match packet {
             C2SLoginPacket::LoginStart(login_start) => {
+                info!(
+                    "{}",
+                    login_start
+                        .uuid
+                        .map_or(String::from("NO UUID PROVIDED"), |uuid| uuid.to_string())
+                );
+
+                info!(
+                    "{} ({}) joined the game.",
+                    login_start.username, self.address
+                );
+
                 //later use tera templating?
                 let disconnect = S2CDisconnect {
                     reason: Chat::new(
@@ -262,7 +274,7 @@ impl Connection {
 
         self.staging.extend_from_slice(&self.queue);
 
-        trace!("writing packet to tcp stream.");
+        trace!("writing packet to tcp stream...");
         self.stream.write_all(&self.staging).await?;
 
         self.stream.flush().await?;

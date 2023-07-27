@@ -71,6 +71,7 @@ impl Server {
                 }
             }
         } else {
+            debug!("no server icon provided, will not serve an image to clients");
             None
         };
 
